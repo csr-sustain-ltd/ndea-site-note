@@ -7,7 +7,7 @@
 
 <!-- Build stamp. INCREMENT THIS ON EVERY DEPLOYMENT (YYYY-MM-DD-NN).
      The freshness check below reads it, so it lives in exactly one place. -->
-<meta name="build-version" content="2026-09-29-01">
+<meta name="build-version" content="2026-09-29-02">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -1163,8 +1163,7 @@ function epcSelect(key){
   set("epc_prev_rating", c.assetRating);
   set("epc_prev_date", String(c.lodgementDate||"").slice(0,10));
   set("epc_prev_area", c.floorArea);
-  set("epc_prev_fuel", c.mainHeatingFuel);
-  set("epc_prev_type", [c.propertyType, c.buildingEnvironment].filter(Boolean).join(" / "));
+  set("epc_prev_type", c.propertyType);
   epcRenderCandidates();
   epcRenderHistory();
   epcRefresh();
@@ -1239,16 +1238,22 @@ function epcInputFlags(){
     if(Math.abs(out.areaPct) > EPC_CONFIG.FLOOR_AREA_TOLERANCE_PCT)
       out.areaFlag = "Floor area differs by "+(out.areaPct>0?"+":"")+out.areaPct.toFixed(1)+"% from the previous EPC.";
   }
-  const pf = epcFuelCat(val("epc_prev_fuel"));
-  const cur = out.fuels.map(epcFuelCat).filter(Boolean);
-  if(pf && cur.length && pf!=="dual fuel" && !cur.includes(pf) && !cur.includes("dual fuel"))
-    out.fuelFlag = "Previous EPC lists "+val("epc_prev_fuel")+" as main heating fuel; this survey lists "+out.fuels.join(", ")+".";
   return out;
 }
 
 function epcApplyMask(){
-  const inp = document.getElementById("epc_prev_rating");
-  if(inp) inp.classList.toggle("epc-masked", epcMasked());
+  ["epc_prev_rating","epc_prev_band"].forEach(id=>{
+    const inp = document.getElementById(id);
+    if(inp) inp.classList.toggle("epc-masked", epcMasked());
+  });
+  const pb = document.getElementById("epc_prev_band"), nb = document.getElementById("epc_new_band");
+  if(pb) pb.value = epcBand(epcNum("epc_prev_rating"));
+  if(nb) nb.value = epcBand(epcNum("epc_new_rating"));
+}
+/* Leading use-class code, e.g. "B1 Offices…" -> "B1", "A1/A2 Retail…" -> "A1/A2" */
+function epcUseCode(s){
+  const m = String(s||"").trim().toUpperCase().match(/^([A-Z]\d*[A-Z]?(?:\s*\/\s*[A-Z]\d*[A-Z]?)*)\b/);
+  return m ? m[1].replace(/\s+/g,"") : "";
 }
 
 function epcRefresh(){
@@ -1266,27 +1271,24 @@ function epcRefresh(){
   const row = (label, prev, cur, diff, flagged) =>
     "<tr><td>"+escapeHtml(label)+"</td><td>"+prev+"</td><td>"+cur+"</td><td"+(flagged?' class="epc-flag"':"")+">"+diff+"</td></tr>";
   let h = '<table class="epc-cmp"><tr><th></th><th>Previous EPC</th><th>This survey</th><th>Difference</th></tr>';
-  h += row("Asset rating",
-    masked ? "<em>hidden until you enter your modelled rating</em>" : escapeHtml(fmtR(pR)),
-    escapeHtml(fmtR(nR)),
-    v ? (v.delta>0?"+":"")+v.delta+" pts" : "—",
+  h += row("EPC rating & score",
+    masked ? "<em>hidden until you enter your modelled score</em>" : escapeHtml(pR===null ? "—" : epcBand(pR)+" ("+pR+")"),
+    escapeHtml(nR===null ? "—" : epcBand(nR)+" ("+nR+")"),
+    v ? (v.delta>0?"+":"")+v.delta+" pts"+(v.bands ? ", "+Math.abs(v.bands)+" band"+(Math.abs(v.bands)>1?"s":"")+(v.bands>0?" worse":" better") : ", same band") : "—",
     v && v.level!=="ok");
   h += row("Floor area (m²)",
     escapeHtml(val("epc_prev_area")||"—"), escapeHtml(val("epc_new_area")||"—"),
     fl.areaPct===null ? "—" : (fl.areaFlag?"⚠ ":"")+(fl.areaPct>0?"+":"")+fl.areaPct.toFixed(1)+"%",
     !!fl.areaFlag);
-  h += row("Main heating fuel",
-    escapeHtml(val("epc_prev_fuel")||"—"),
-    escapeHtml(fl.fuels.join(", ")||"— (enter HVAC systems)"),
-    fl.fuelFlag ? "⚠ Not listed in this survey" : (val("epc_prev_fuel")&&fl.fuels.length ? "Consistent" : "—"),
-    !!fl.fuelFlag);
-  h += row("Building type / use",
-    escapeHtml(val("epc_prev_type")||"—"), escapeHtml(val("p_use")||"—"), "Compare manually", false);
-  h += row("Certificate",
-    escapeHtml(val("epc_prev_date") ? "Lodged "+epcFmtDate(val("epc_prev_date")) : "—"),
-    "—",
-    vu ? (expired ? "⚠ Expired "+epcFmtDate(vu.toISOString()) : "Valid until "+epcFmtDate(vu.toISOString())) : "—",
-    !!expired);
+  const pT = val("epc_prev_type"), nT = val("p_use");
+  const pc = epcUseCode(pT), nc = epcUseCode(nT);
+  let tDiff = "—", tFlag = false;
+  if(pT && nT){
+    if(pc && nc){ tFlag = pc!==nc; tDiff = tFlag ? "⚠ Differs" : "Same"; }
+    else tDiff = "Compare manually";
+  }
+  h += row("Activity type",
+    escapeHtml(pT||"—"), escapeHtml(nT||"— (set Building Use on this tab)"), tDiff, tFlag);
   h += "</table>";
   cmp.innerHTML = h;
 
@@ -1338,19 +1340,20 @@ function buildEpcSection(){
   body.appendChild(el("h4",{class:"epc-sub"},"Previous EPC (auto-filled when you select a property; editable)"));
   const g1 = el("div",{class:"grid2"});
   g1.appendChild(field("Previous EPC address", textInput("epc_prev_addr")));
-  g1.appendChild(field("Previous asset rating", numIn("epc_prev_rating","e.g. 84")));
+  g1.appendChild(field("Previous EPC score (asset rating)", numIn("epc_prev_rating","e.g. 84")));
+  g1.appendChild(field("Previous EPC rating (band)", (()=>{const i=textInput("epc_prev_band"); i.readOnly=true; i.tabIndex=-1; return i;})(), false, "Calculated from the score"));
   g1.appendChild(field("UPRN", textInput("epc_prev_uprn")));
   g1.appendChild(field("Lodgement date", dateInput("epc_prev_date")));
   g1.appendChild(field("Certificate reference", textInput("epc_prev_cert")));
   g1.appendChild(field("Previous floor area (m²)", numIn("epc_prev_area")));
-  g1.appendChild(field("Previous building type / environment", textInput("epc_prev_type")));
-  g1.appendChild(field("Previous main heating fuel", textInput("epc_prev_fuel")));
+  g1.appendChild(field("Previous activity type", textInput("epc_prev_type")));
   body.appendChild(g1);
   body.appendChild(el("div",{id:"epc_history"}));
 
   body.appendChild(el("h4",{class:"epc-sub"},"This survey (from your model)"));
   const g2 = el("div",{class:"grid2"});
-  g2.appendChild(field("Modelled asset rating", numIn("epc_new_rating","e.g. 96"), false, "Enter once SBEM has been run"));
+  g2.appendChild(field("Modelled EPC score (asset rating)", numIn("epc_new_rating","e.g. 96"), false, "Enter once SBEM has been run"));
+  g2.appendChild(field("Modelled EPC rating (band)", (()=>{const i=textInput("epc_new_band"); i.readOnly=true; i.tabIndex=-1; return i;})(), false, "Calculated from the score"));
   g2.appendChild(field("Total useful floor area (m²)", numIn("epc_new_area"), false, "As modelled / zoned"));
   g2.appendChild(field("Software / NCM version used", textInput("epc_new_software","e.g. SBEM v6.1.x")));
   body.appendChild(g2);
@@ -1406,18 +1409,18 @@ document.addEventListener("change", epcOnAnyChange);
 /* ---------- output ---------- */
 function appendEpcToPrintSheet(ps){
   const pR = epcNum("epc_prev_rating"), nR = epcNum("epc_new_rating");
-  const ids = ["epc_prev_addr","epc_prev_uprn","epc_prev_cert","epc_prev_rating","epc_prev_date","epc_prev_area","epc_prev_fuel","epc_prev_type","epc_new_rating","epc_new_area","epc_new_software","epc_reason_text"];
+  const ids = ["epc_prev_addr","epc_prev_uprn","epc_prev_cert","epc_prev_rating","epc_prev_date","epc_prev_area","epc_prev_type","epc_new_rating","epc_new_area","epc_new_software","epc_reason_text"];
   const any = ids.some(id=>val(id).trim()!=="") || EPC_REASONS.some((_,i)=>checked("epc_reason_"+i));
   if(!any) return;
 
   ps.appendChild(el("h2",{},"Previous EPC & Variance Check"));
-  const withBand = r => r===null ? "" : r+" (band "+epcBand(r)+")";
+  const withBand = r => r===null ? "" : epcBand(r)+" ("+r+")";
   const vu = epcValidUntil(val("epc_prev_date"));
   const pairs = [
     ["Previous EPC address", val("epc_prev_addr")], ["UPRN / certificate ref", [val("epc_prev_uprn"), val("epc_prev_cert")].filter(Boolean).join(" / ")],
-    ["Previous asset rating", withBand(pR)], ["Lodged / valid until", val("epc_prev_date") ? epcFmtDate(val("epc_prev_date"))+(vu?" / "+epcFmtDate(vu.toISOString()):"") : ""],
-    ["Previous floor area (m²)", val("epc_prev_area")], ["Previous main heating fuel", val("epc_prev_fuel")],
-    ["Previous building type", val("epc_prev_type")], ["This survey - asset rating", withBand(nR)],
+    ["Previous EPC rating & score", withBand(pR)], ["Lodged / valid until", val("epc_prev_date") ? epcFmtDate(val("epc_prev_date"))+(vu?" / "+epcFmtDate(vu.toISOString()):"") : ""],
+    ["Previous floor area (m²)", val("epc_prev_area")], ["Previous activity type", val("epc_prev_type")],
+    ["This survey - EPC rating & score", withBand(nR)], ["This survey - activity type", val("p_use")],
     ["This survey - floor area (m²)", val("epc_new_area")], ["Software / NCM version", val("epc_new_software")],
   ];
   for(let i=0;i<pairs.length;i+=2){
@@ -1503,7 +1506,17 @@ function buildProjectPanel(){
   ]), true));
   const BREGS_AGES = ["1975/80 Building","1980/85 Building","1990 Building","1995 Building","1995 Shopping Centre","2002 Building","2006 Onwards","Pre 1974 Building","Solid Brick Building"];
   g1.appendChild(field("Building Regulation Age", selectInput("p_bregs_age", BREGS_AGES)));
-  g1.appendChild(field("Building Regulation Age for any Extension", selectInput("p_bregs_ext_age", BREGS_AGES), false, "Leave blank if there is no extension"));
+  const hasExt = selectInput("p_has_ext",["Yes","No"]);
+  g1.appendChild(field("Is there an extension on site?", hasExt));
+  const extAgeField = field("Building Regulation Age for the Extension", selectInput("p_bregs_ext_age", BREGS_AGES));
+  extAgeField.id = "p_bregs_ext_wrap";
+  extAgeField.style.display = "none";
+  g1.appendChild(extAgeField);
+  hasExt.addEventListener("change", ()=>{
+    const yes = hasExt.value==="Yes";
+    extAgeField.style.display = yes ? "" : "none";
+    if(!yes) document.getElementById("p_bregs_ext_age").value = "";
+  });
 
   const g2 = el("div",{class:"grid2"});
   const occWrap = el("div",{class:"field"});
@@ -1742,7 +1755,7 @@ function buildFabricPanel(){
 
   fabricTables.doors = makeRowTable("doors",
     [{key:"name",label:"Door Name",type:"select",options:["Personal Door","Vehicle Access Door","High Usage Door"]},
-     {key:"type",label:"Type",type:"select",options:["Insulated Personal Door 1995+","Uninsulated Personal Door Pre-1995","Vehicle Door 1995/2002","Vehicle Door 2002/2006","Vehicle Door Pre-1995","Vehicle Door Pre-1995 sandwich type"]},
+     {key:"type",label:"Construction Age",type:"select",options:["Insulated Personal Door 1995+","Uninsulated Personal Door Pre-1995","Vehicle Door 1995/2002","Vehicle Door 2002/2006","Vehicle Door Pre-1995","Vehicle Door Pre-1995 sandwich type"]},
      {key:"notes",label:"Notes"}], "Add door type");
   panel.appendChild(section("Doors","3.07 — doors >50% glazed count as glazing; internal doors excluded", fabricTables.doors));
 
@@ -2771,7 +2784,8 @@ function buildPrintSheet(){
     ["Customer Phone", val("p_phone")], ["Building Age", val("p_age")],
     ["Customer Email", val("p_email")], ["Building Use (SIC)", val("p_use")],
     ["Occupancy", radioVal("occupancy")], ["Number of Floors", val("p_floors")],
-    ["Building Regulation Age", val("p_bregs_age")], ["Building Regs Age (Extension)", val("p_bregs_ext_age")],
+    ["Building Regulation Age", val("p_bregs_age")], ["Extension on Site", val("p_has_ext")],
+    ...(val("p_has_ext")==="Yes" ? [["Building Regs Age (Extension)", val("p_bregs_ext_age")]] : []),
     ["Conservation Status", val("p_conservation")],
   ];
   for(let i=0;i<surveyPairs.length;i+=2){
@@ -2839,7 +2853,7 @@ function buildPrintSheet(){
   dataTable("Glazing","3.03 · 3.07 · 3.09 · 3.11 · 3.12 · 4.02",
     readRowTable(fabricTables.glazing), [{key:"name",label:"Name"},{key:"frame",label:"Frame"},{key:"coating",label:"Coating"},{key:"units",label:"Units"}]);
   dataTable("Doors","3.07",
-    readRowTable(fabricTables.doors), [{key:"name",label:"Name"},{key:"type",label:"Type"},{key:"notes",label:"Notes"}]);
+    readRowTable(fabricTables.doors), [{key:"name",label:"Name"},{key:"type",label:"Construction Age"},{key:"notes",label:"Notes"}]);
 
   // ---- HVAC ----
   dataTable("Heating & Cooling Systems","2.02 · 3.05 · 3.06 · 5.01 · 6.01 · 6.03 · 6.04 · 6.11 · 6.13",
@@ -3122,6 +3136,7 @@ document.getElementById("btn-clear").addEventListener("click", ()=>{
   Object.values(dhwTable).forEach(t=> t._tbody && (t._tbody.innerHTML=""));
   Object.values(lightTable).forEach(t=> t._tbody && (t._tbody.innerHTML=""));
   Object.values(renTable).forEach(t=> t._tbody && (t._tbody.innerHTML=""));
+  const extWrap = document.getElementById("p_bregs_ext_wrap"); if(extWrap) extWrap.style.display = "none";
   document.getElementById("status-text").textContent = "Draft — not yet generated";
 });
 
