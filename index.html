@@ -7,7 +7,7 @@
 
 <!-- Build stamp. INCREMENT THIS ON EVERY DEPLOYMENT (YYYY-MM-DD-NN).
      The freshness check below reads it, so it lives in exactly one place. -->
-<meta name="build-version" content="2026-08-27-01">
+<meta name="build-version" content="2026-09-29-01">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -807,8 +807,8 @@ const state = {
   fabric: { walls: [], roofs: [], floors: [], glazing: [], doors: [] },
   hvac: { meters:{}, systems: [], notes:"" },
   dhw: { systems: [], notes:"", ahu: [], lme: [], ventNotes:"" },
-  lighting: { rows: [], notes:"" },
-  renewables: { thermal: [], pv: [], wind: [], notes:"" },
+  lighting: { general: [], display: [], notes:"" },
+  renewables: { systems: [], notes:"" },
   conventions: {},
   photos: {},
   sign: {}
@@ -1498,8 +1498,12 @@ function buildProjectPanel(){
     "D1 Non-residential Institutions – Libraries Museums and Galleries",
     "D2 General Assembly and Leisure plus Night Clubs and Theatres",
     "Others – Emergency Services",
-    "Others – Passenger terminals"
+    "Others – Passenger terminals",
+    "Sui Generis"
   ]), true));
+  const BREGS_AGES = ["1975/80 Building","1980/85 Building","1990 Building","1995 Building","1995 Shopping Centre","2002 Building","2006 Onwards","Pre 1974 Building","Solid Brick Building"];
+  g1.appendChild(field("Building Regulation Age", selectInput("p_bregs_age", BREGS_AGES)));
+  g1.appendChild(field("Building Regulation Age for any Extension", selectInput("p_bregs_ext_age", BREGS_AGES), false, "Leave blank if there is no extension"));
 
   const g2 = el("div",{class:"grid2"});
   const occWrap = el("div",{class:"field"});
@@ -1513,7 +1517,6 @@ function buildProjectPanel(){
   g2.appendChild(occWrap);
 
   g2.appendChild(field("Number of Floors", selectInput("p_floors",["1","2","3","4","5","6","7+"])));
-  g2.appendChild(field("Access to All Parts", selectInput("p_access",["Yes","No","Partial"]), true));
   g2.appendChild(field("Conservation Status", selectInput("p_conservation",["No","Listed Building","Conservation Area"])));
 
   panel.appendChild(section("Survey Details","", (()=>{const w=el("div");w.appendChild(g1);w.appendChild(el("div",{style:"height:14px"}));w.appendChild(g2);return w;})()));
@@ -1650,42 +1653,96 @@ function readRowTable(wrap){
 }
 
 /* ---------- FABRIC PANEL ---------- */
+const GLAZING_UNITS = [
+  "10-16-16 uncoated, air filled",
+  "10-16-16 low-e, air filled",
+  "4mm single glazing (clear glass)",
+  "4-12-4 low-e, air filled",
+  "4-12-4 uncoated glass, air filled",
+  "4-12-4 uncoated, argon filled",
+  "4-12-4 coated, argon filled",
+  "4-12-4-12-4 air filled triple glazing",
+  "4-12-4-12-4 triple glazing, argon filled, low-e",
+  "4-12-4-12-4 triple glazing, low-e",
+  "4-12-4-12-4-12-4 quadruple glazing",
+  "4-16-4 coated, argon filled",
+  "4-16-4 uncoated glass, air filled",
+  "4-16-4 uncoated, argon filled",
+  "4-16-4 coated, air filled, low-e",
+  "4-20-4 coated, argon filled",
+  "4-20-4 air filled, low-e",
+  "4-20-4 uncoated, argon filled",
+  "4-20-4 uncoated, air filled",
+  "4-6-4 coated, argon filled",
+  "4-6-4 air filled, low-e",
+  "4-6-4 uncoated, argon filled",
+  "4-6-4 uncoated, air filled",
+  "4-6-4-6-4 air filled, triple glazing",
+  "4-6-4-6-4 air filled, triple glazing, low-e",
+  "6mm single glazing (clear glass)",
+  "6-16-6 coated, air filled",
+  "6-16-6 uncoated, air filled",
+  "6-20-6 uncoated, air filled",
+  "6-20-6 coated, air filled",
+  "9-16-6 uncoated, air filled",
+  "9-16-6 coated, air filled",
+  "Acoustic double glazing with 200mm interpane gap",
+  "Quadruple glazing, low-e",
+  "Rooflight, barrel-vault, single skin, plastic",
+  "Rooflight, barrel-vault, triple skin",
+  "Rooflight, barrel-vault, twin skin, plastic",
+  "Rooflight, dome",
+  "Rooflight, dome, triple skin",
+  "Rooflight, dome, triple skin, plastic",
+  "Rooflight, in-plane, single skin (plastic), no upstand",
+  "Rooflight, in-plane, triple skin (plastic), no upstand",
+  "Rooflight, in-plane, twin skin (plastic), no upstand",
+  "Rooflight, panel glazing",
+  "Rooflight, panel glazing, twin skin",
+  "Rooflight, pyramid",
+  "Rooflight, pyramid, triple skin",
+  "Rooflight, pyramid, twin skin",
+  "Rooflight, skylight",
+  "Rooflight, skylight, triple skin",
+  "Rooflight, skylight, twin skin"
+];
 const fabricTables = {};
 function buildFabricPanel(){
   const panel = el("div",{id:"panel-fabric", class:"panel"});
 
+  const locations = ["Main building","Extension 1","Extension 2"];
+
   fabricTables.walls = makeRowTable("walls",
-    [{key:"name",label:"Wall Name / ID"},
+    [{key:"name",label:"Wall Name / ID",type:"select",options:["Cavity","Solid (Brick)","Solid (Masonry)","Metal Cladding","Modular Construction","Timber Frame","Curtain","Precast Concrete Panel","Light Steel Framing"]},
      {key:"type",label:"Wall Type",type:"select",options:["External Wall","Internal Partition"]},
      {key:"insulation",label:"Insulation?",type:"select",options:["Y","N","Unknown"]},
-     {key:"notes",label:"Description / Notes"}], "Add wall / partition type");
+     {key:"location",label:"Wall Location",type:"select",options:locations}], "Add wall / partition type");
   panel.appendChild(section("Wall Construction","3.02 · 3.07 · 3.08 · 3.09 · 6.13", fabricTables.walls));
 
   fabricTables.roofs = makeRowTable("roofs",
-    [{key:"name",label:"Roof Name / ID"},
+    [{key:"name",label:"Roof Name / ID",type:"select",options:["Slates or Tiles","Cladding System","Asbestos","Concrete","Light deck"]},
      {key:"type",label:"Type",type:"select",options:["Pitched","Flat"]},
      {key:"insulation",label:"Insulation?",type:"select",options:["Y","N","Unknown"]},
-     {key:"notes",label:"Description / Notes"}], "Add roof type");
+     {key:"location",label:"Roof Location",type:"select",options:locations}], "Add roof type");
   panel.appendChild(section("Roof Construction","3.07 · 4.05", fabricTables.roofs));
 
   fabricTables.floors = makeRowTable("floors",
-    [{key:"name",label:"Floor Name / ID"},
-     {key:"type",label:"Type",type:"select",options:["Ground","Suspended","Internal Floor"]},
+    [{key:"name",label:"Floor Name / ID",type:"select",options:["Ground","Internal","Suspended Ground","Suspended External"]},
+     {key:"type",label:"Construction Type",type:"select",options:["Concrete","Timber"]},
      {key:"insulation",label:"Insulation?",type:"select",options:["Y","N","Unknown"]},
      {key:"notes",label:"Description / Notes"}], "Add floor type");
   panel.appendChild(section("Floor Construction","3.07", fabricTables.floors));
 
   fabricTables.glazing = makeRowTable("glazing",
-    [{key:"name",label:"Glazing Name"},
+    [{key:"name",label:"Glazing Name",type:"select",options:["G1","G2","G3","Rooflight","Display Window"]},
      {key:"frame",label:"Frame",type:"select",options:["Aluminium","PVC / uPVC","Wood","Metal","No Frame","Other"]},
      {key:"coating",label:"Coating",type:"select",options:["Clear","Low-e","Tinted","Reflective"]},
-     {key:"units",label:"Units",type:"select",options:["Single","Double","Triple","Roof Light"]}], "Add glazing type");
+     {key:"units",label:"Units",type:"select",options:GLAZING_UNITS}], "Add glazing type");
   panel.appendChild(section("Glazing","3.03 · 3.07 · 3.09 · 3.11 · 3.12 · 4.02", fabricTables.glazing));
 
   fabricTables.doors = makeRowTable("doors",
-    [{key:"name",label:"Door Name"},
-     {key:"type",label:"Type",type:"select",options:["VAD (Vehicle Access)","PD (Personal Door)","Other"]},
-     {key:"material",label:"Material"},
+    [{key:"name",label:"Door Name",type:"select",options:["Personal Door","Vehicle Access Door","High Usage Door"]},
+     {key:"type",label:"Type",type:"select",options:["Insulated Personal Door 1995+","Uninsulated Personal Door Pre-1995","Vehicle Door 1995/2002","Vehicle Door 2002/2006","Vehicle Door Pre-1995","Vehicle Door Pre-1995 sandwich type"]},
      {key:"notes",label:"Notes"}], "Add door type");
   panel.appendChild(section("Doors","3.07 — doors >50% glazed count as glazing; internal doors excluded", fabricTables.doors));
 
@@ -1694,16 +1751,6 @@ function buildFabricPanel(){
 
 /* ---------- HVAC PANEL ---------- */
 const hvacTable = {};
-const hvacControlTypes = [
-  "Local time and local temperature controls",
-  "Central time and local temperature",
-  "LT/LTemp (local time / local temperature)",
-  "CT (central time)",
-  "OPTI (optimum start/stop)",
-  "WC (weather comp)",
-  "BMS (Building Management System)",
-  "Manual"
-];
 function buildHvacPanel(){
   const panel = el("div",{id:"panel-hvac", class:"panel"});
 
@@ -1750,20 +1797,6 @@ function buildHvacPanel(){
      {key:"controls",label:"Controls",type:"select",options:controls}], "Add heating/cooling system");
   panel.appendChild(section("Schedule of Heating & Cooling Systems","2.02 · 3.05 · 3.06 · 5.01 · 6.01 · 6.03 · 6.04 · 6.11 · 6.13", hvacTable.systems));
 
-  // ---- HVAC control system ----
-  const hcsBody = el("div");
-  hcsBody.appendChild(field("Type of Control System", textInput("hvac_control_type"), false, "Describe the overall control system in place, e.g. BMS, local time switches, central time control…"));
-  hcsBody.appendChild(el("div",{style:"height:12px"}));
-  const hcsChecklist = el("div",{class:"photogrid"});
-  hvacControlTypes.forEach((c,i)=>{
-    const id="hvaccontrol_"+i;
-    hcsChecklist.appendChild(el("div",{class:"photoitem"},
-      el("input",{type:"checkbox",id}), el("label",{for:id},c)
-    ));
-  });
-  hcsBody.appendChild(field("Controls Present on Site", hcsChecklist));
-  panel.appendChild(section("HVAC Control System","6.01 · 6.03", hcsBody));
-
   panel.appendChild(section("HVAC Justification Notes","", field("Brief description of all HVAC types, including any bivalent systems", textarea("hv_notes",4))));
 
   return panel;
@@ -1776,14 +1809,13 @@ function buildDhwPanel(){
 
   const fuels = ["Natural gas","Grid electricity","LPG","Oil","Coal","Biogas","Biomass","Anthracite","Waste heat","Smokeless fuel","Dual fuel"];
   dhwTable.systems = makeRowTable("dhwsys",
-    [{key:"name",label:"Area Served"},
-     {key:"type",label:"Type",type:"select",options:["Standalone","Instantaneous","Same as HVAC system","Solar thermal","Heat pump"]},
+    [{key:"name",label:"Area Served",type:"select",options:["Toilets","Food prep","Bathroom","Showers","Tea make","Other"]},
+     {key:"type",label:"Type",type:"select",options:["Standalone","Instantaneous","Instantaneous Combi","Same as HVAC system","Solar thermal","Heat pump"]},
      {key:"fuel",label:"Fuel",type:"select",options:fuels},
      {key:"storage",label:"Storage Vol (L)"},
      {key:"insulationtype",label:"Insulation Type",type:"select",options:["Factory Fitted","Loose Jacket"]},
      {key:"insulation",label:"Insulation (mm)"},
-     {key:"deadleg",label:"Dead Leg?",type:"select",options:["Yes","No"]},
-     {key:"deadleginfo",label:"Dead Leg Information"},
+     {key:"circulation",label:"Circulation Loop?",type:"select",options:["Yes","No"]},
      {key:"post98",label:"Post-1998?",type:"select",options:["Yes","No"]}], "Add hot water system");
   panel.appendChild(section("Domestic Hot Water","6.04 · 6.05 · 6.06 · 6.10", dhwTable.systems));
 
@@ -1799,7 +1831,7 @@ function buildDhwPanel(){
   dhwTable.lme = makeRowTable("lme",
     [{key:"controls",label:"Controls",type:"select",options:["Manual","Automatic","Timer","Humidity sensor"]},
      {key:"motor",label:"Motor (W)"},
-     {key:"location",label:"Location"}], "Add local mechanical exhaust");
+     {key:"location",label:"Location",type:"select",options:["Toilet","Showers","Food prep","Storeroom","Other"]}], "Add local mechanical exhaust");
   panel.appendChild(section("Local Mechanical Exhaust","6.07 · 6.08 · 6.09 · 6.12", dhwTable.lme));
 
   panel.appendChild(section("Ventilation Justification Notes","", field("Description of all mechanical ventilation / exhaust systems", textarea("vent_notes",3))));
@@ -1809,12 +1841,37 @@ function buildDhwPanel(){
 
 /* ---------- LIGHTING PANEL ---------- */
 const lightTable = {};
+const LAMP_TYPES = [
+  ["T","Tungsten"],["CFL","Compact fluorescent"],["MH","Metal halide"],
+  ["T12","T12 fluorescent, halo, low-freq"],["T8","T8 fluorescent, halo, low-freq"],
+  ["T8 HF","T8 fluorescent, halo, high-freq"],["T8 HF Tri-ph.","T8 fluorescent, tri-phosphor, high-freq"],
+  ["T5","T5 fluorescent, tri-phosphor, high-freq"],["HPM","High-pressure mercury"],
+  ["HPS","High-pressure sodium"],["LED","Light-emitting diode"],["FL","Fluorescent, no further details"],
+  ["Other","Other (describe in notes)"]
+];
+function lampChecklist(prefix){
+  const wrap = el("div");
+  const grid = el("div",{class:"photogrid"});
+  LAMP_TYPES.forEach(([code,desc],i)=>{
+    const id = prefix+"_"+i;
+    grid.appendChild(el("div",{class:"photoitem"},
+      el("input",{type:"checkbox",id}),
+      el("label",{for:id}, el("strong",{style:"font-family:var(--mono);"},code), " – "+desc)
+    ));
+  });
+  wrap.appendChild(grid);
+  wrap.appendChild(el("div",{class:"hint",style:"margin-top:10px;font-style:italic;"},"Note: see drawing for locations."));
+  return wrap;
+}
+function lampsTicked(prefix){
+  return LAMP_TYPES.filter((_,i)=>checked(prefix+"_"+i)).map(([c,d])=> c==="Other" ? "Other" : c+" ("+d+")");
+}
 function buildLightingPanel(){
   const panel = el("div",{id:"panel-lighting", class:"panel"});
 
   const legend = [
     ["T","Tungsten"],["CFL","Compact fluorescent"],["MH","Metal halide"],
-    ["T12","T12 fluorescent, halo, low-freq"],["T8 MF","T8 fluorescent, halo, low-freq"],
+    ["T12","T12 fluorescent, halo, low-freq"],["T8","T8 fluorescent, halo, low-freq"],
     ["T8 HF","T8 fluorescent, halo, high-freq"],["T8 HF Tri-ph.","T8 fluorescent, tri-phosphor, high-freq"],
     ["T5","T5 fluorescent, tri-phosphor, high-freq"],["HPM","High-pressure mercury"],
     ["HPS","High-pressure sodium"],["LED","Light-emitting diode"],["FL","Fluorescent, no further details"]
@@ -1828,13 +1885,8 @@ function buildLightingPanel(){
   });
   panel.appendChild(section("Lighting Type Reference Codes","7.01–7.06", legBody));
 
-  const lampTypes = legend.map(l=>l[0]).concat(["Other"]);
-  lightTable.rows = makeRowTable("lighting",
-    [{key:"zone",label:"Zone / Name"},
-     {key:"type",label:"Lamp Type",type:"select",options:lampTypes},
-     {key:"controls",label:"Controls",type:"select",options:["Local switch","Photoelectric","Central time control","Daylight linked","Occupancy linked","Dimmer","Other"]},
-     {key:"occsensor",label:"Occupancy Sensor?",type:"select",options:["Y","N"]}], "Add lighting zone");
-  panel.appendChild(section("Lighting Schedule","", lightTable.rows));
+  panel.appendChild(section("General Lighting Types Identified","7.01–7.06", lampChecklist("lightgen")));
+  panel.appendChild(section("Display Lighting Types Identified","", lampChecklist("lightdisp")));
 
   panel.appendChild(section("Lighting Justification Notes","", field("Description of lighting types and controls", textarea("light_notes",3))));
 
@@ -1843,35 +1895,35 @@ function buildLightingPanel(){
 
 /* ---------- RENEWABLES PANEL ---------- */
 const renTable = {};
+const REN_SYSTEMS = [
+  "Solar Thermal (SES)",
+  "Photovoltaic (PV)",
+  "Wind Generator",
+  "Combined Heat & Power (CHP)",
+  "Other"
+];
 function buildRenewablesPanel(){
   const panel = el("div",{id:"panel-renewables", class:"panel"});
 
-  const orientations = ["N","NE","E","SE","S","SW","W","NW"];
-
-  renTable.thermal = makeRowTable("renthermal",
-    [{key:"name",label:"System Name"},
-     {key:"area",label:"Panel Area (m²)"},
-     {key:"orientation",label:"Orientation",type:"select",options:orientations},
-     {key:"incline",label:"Incline"},
-     {key:"storage",label:"Storage (L)"},
-     {key:"circulation",label:"Circulation",type:"select",options:["1 – Thermosiphon","2 – Circulation with PV","3 – Pumped circulation"]}], "Add solar thermal system");
-  panel.appendChild(section("Solar Thermal (SES)","", renTable.thermal));
-
-  renTable.pv = makeRowTable("renpv",
-    [{key:"name",label:"System Name"},
-     {key:"area",label:"Panel Area (m²)"},
-     {key:"silicon",label:"Silicon Type",type:"select",options:["Monocrystalline","Polycrystalline","Amorphous","Thin-film","Other"]},
-     {key:"orientation",label:"Orientation",type:"select",options:orientations},
-     {key:"power",label:"Est. Peak Power (kWp)"}], "Add PV system");
-  panel.appendChild(section("Photovoltaic (PV)","1.01", renTable.pv));
-
-  renTable.wind = makeRowTable("renwind",
-    [{key:"name",label:"System Name"},
-     {key:"terrain",label:"Terrain",type:"select",options:["Smooth","Farm","Suburban","Urban"]},
-     {key:"diameter",label:"Diameter (m)"},
-     {key:"height",label:"Height (m)"},
-     {key:"power",label:"Power (kW)"}], "Add wind generator");
-  panel.appendChild(section("Wind Generator","", renTable.wind));
+  const body = el("div");
+  body.appendChild(el("div",{class:"hint",style:"margin-bottom:10px;"},"Tick each system present on site and record whether the relevant specification has been obtained."));
+  const table = el("table",{class:"rowtable"});
+  table.appendChild(el("thead",{}, el("tr",{},
+    el("th",{style:"width:70px"},"Present?"), el("th",{},"System"),
+    el("th",{},"Specification Obtained?"), el("th",{},"Notes / Location")
+  )));
+  const tb = el("tbody");
+  REN_SYSTEMS.forEach((name,i)=>{
+    tb.appendChild(el("tr",{},
+      el("td",{style:"text-align:center;vertical-align:middle;"}, el("input",{type:"checkbox",id:"ren_present_"+i,style:"width:18px;height:18px;accent-color:var(--primary-color);"})),
+      el("td",{style:"vertical-align:middle;font-size:14px;"}, el("label",{for:"ren_present_"+i,style:"cursor:pointer;"},name)),
+      el("td",{}, selectInput("ren_spec_"+i,["Yes","No","Partial"],"")),
+      el("td",{}, textInput("ren_notes_"+i, name==="Other" ? "describe system…" : ""))
+    ));
+  });
+  table.appendChild(tb);
+  body.appendChild(el("div",{class:"table-scroll"}, table));
+  panel.appendChild(section("Renewable Systems Present","1.01", body));
 
   panel.appendChild(section("Renewables Justification Notes","", field("Description of all renewable systems on site", textarea("ren_notes",3))));
 
@@ -2719,7 +2771,8 @@ function buildPrintSheet(){
     ["Customer Phone", val("p_phone")], ["Building Age", val("p_age")],
     ["Customer Email", val("p_email")], ["Building Use (SIC)", val("p_use")],
     ["Occupancy", radioVal("occupancy")], ["Number of Floors", val("p_floors")],
-    ["Access to All Parts", val("p_access")], ["Conservation Status", val("p_conservation")],
+    ["Building Regulation Age", val("p_bregs_age")], ["Building Regs Age (Extension)", val("p_bregs_ext_age")],
+    ["Conservation Status", val("p_conservation")],
   ];
   for(let i=0;i<surveyPairs.length;i+=2){
     const row = el("div",{class:"kvrow"});
@@ -2778,30 +2831,26 @@ function buildPrintSheet(){
   }
 
   dataTable("Wall Construction","3.02 · 3.07 · 3.08 · 3.09 · 6.13",
-    readRowTable(fabricTables.walls), [{key:"name",label:"Name"},{key:"type",label:"Wall Type"},{key:"insulation",label:"Insulation"},{key:"notes",label:"Notes"}]);
+    readRowTable(fabricTables.walls), [{key:"name",label:"Construction"},{key:"type",label:"Wall Type"},{key:"insulation",label:"Insulation"},{key:"location",label:"Location"}]);
   dataTable("Roof Construction","3.07 · 4.05",
-    readRowTable(fabricTables.roofs), [{key:"name",label:"Name"},{key:"type",label:"Type"},{key:"insulation",label:"Insulation"},{key:"notes",label:"Notes"}]);
+    readRowTable(fabricTables.roofs), [{key:"name",label:"Construction"},{key:"type",label:"Type"},{key:"insulation",label:"Insulation"},{key:"location",label:"Location"}]);
   dataTable("Floor Construction","3.07",
-    readRowTable(fabricTables.floors), [{key:"name",label:"Name"},{key:"type",label:"Type"},{key:"insulation",label:"Insulation"},{key:"notes",label:"Notes"}]);
+    readRowTable(fabricTables.floors), [{key:"name",label:"Floor"},{key:"type",label:"Construction Type"},{key:"insulation",label:"Insulation"},{key:"notes",label:"Notes"}]);
   dataTable("Glazing","3.03 · 3.07 · 3.09 · 3.11 · 3.12 · 4.02",
     readRowTable(fabricTables.glazing), [{key:"name",label:"Name"},{key:"frame",label:"Frame"},{key:"coating",label:"Coating"},{key:"units",label:"Units"}]);
   dataTable("Doors","3.07",
-    readRowTable(fabricTables.doors), [{key:"name",label:"Name"},{key:"type",label:"Type"},{key:"material",label:"Material"},{key:"notes",label:"Notes"}]);
+    readRowTable(fabricTables.doors), [{key:"name",label:"Name"},{key:"type",label:"Type"},{key:"notes",label:"Notes"}]);
 
   // ---- HVAC ----
   dataTable("Heating & Cooling Systems","2.02 · 3.05 · 3.06 · 5.01 · 6.01 · 6.03 · 6.04 · 6.11 · 6.13",
     readRowTable(hvacTable.systems), [{key:"name",label:"HVAC System Model"},{key:"area",label:"Area Served"},{key:"type",label:"Type"},{key:"fuel",label:"Fuel"},{key:"controls",label:"Controls"}]);
 
-  const hvacControlsPresent = [];
-  hvacControlTypes.forEach((c,i)=>{ if(checked("hvaccontrol_"+i)) hvacControlsPresent.push(c); });
-  ps.appendChild(el("div",{class:"notesblock"}, el("span",{class:"k"},"Type of Control System"), val("hvac_control_type")||"—"));
-  ps.appendChild(el("div",{class:"notesblock"}, el("span",{class:"k"},"HVAC Controls Present"), hvacControlsPresent.length? hvacControlsPresent.join(", ") : "—"));
 
   ps.appendChild(el("div",{class:"notesblock"}, el("span",{class:"k"},"HVAC Justification Notes"), val("hv_notes")||"—"));
 
   // ---- DHW & Ventilation ----
   dataTable("Domestic Hot Water","6.04 · 6.05 · 6.06 · 6.10",
-    readRowTable(dhwTable.systems), [{key:"name",label:"Area Served"},{key:"type",label:"Type"},{key:"fuel",label:"Fuel"},{key:"storage",label:"Storage (L)"},{key:"insulationtype",label:"Insul. Type"},{key:"insulation",label:"Insul. (mm)"},{key:"deadleg",label:"Dead Leg?"},{key:"deadleginfo",label:"Dead Leg Info"},{key:"post98",label:"Post-98"}]);
+    readRowTable(dhwTable.systems), [{key:"name",label:"Area Served"},{key:"type",label:"Type"},{key:"fuel",label:"Fuel"},{key:"storage",label:"Storage (L)"},{key:"insulationtype",label:"Insul. Type"},{key:"insulation",label:"Insul. (mm)"},{key:"circulation",label:"Circ. Loop"},{key:"post98",label:"Post-98"}]);
   ps.appendChild(el("div",{class:"notesblock"}, el("span",{class:"k"},"DHW Justification Notes"), val("dhw_notes")||"—"));
   dataTable("Mechanical Ventilation (AHU)","6.07 · 6.08 · 6.09 · 6.12",
     readRowTable(dhwTable.ahu), [{key:"name",label:"Name"},{key:"controls",label:"Controls"},{key:"sfp",label:"SFP"},{key:"heatrecovery",label:"Heat Recovery"}]);
@@ -2810,17 +2859,24 @@ function buildPrintSheet(){
   ps.appendChild(el("div",{class:"notesblock"}, el("span",{class:"k"},"Ventilation Justification Notes"), val("vent_notes")||"—"));
 
   // ---- Lighting ----
-  dataTable("Lighting Schedule","7.01–7.06",
-    readRowTable(lightTable.rows), [{key:"zone",label:"Zone"},{key:"type",label:"Lamp Type"},{key:"controls",label:"Controls"},{key:"occsensor",label:"Occ. Sensor"}]);
+  ps.appendChild(el("h2",{},"Lighting", el("span",{class:"pc"},"CONV. 7.01–7.06")));
+  const genL = lampsTicked("lightgen"), dispL = lampsTicked("lightdisp");
+  ps.appendChild(el("div",{class:"notesblock"}, el("span",{class:"k"},"General Lighting Types Identified"), genL.length? genL.join(", ") : "—"));
+  ps.appendChild(el("div",{class:"notesblock"}, el("span",{class:"k"},"Display Lighting Types Identified"), dispL.length? dispL.join(", ") : "—"));
+  ps.appendChild(el("div",{class:"notesblock"}, "See drawing for locations."));
   ps.appendChild(el("div",{class:"notesblock"}, el("span",{class:"k"},"Lighting Justification Notes"), val("light_notes")||"—"));
 
   // ---- Renewables ----
-  dataTable("Solar Thermal","",
-    readRowTable(renTable.thermal), [{key:"name",label:"Name"},{key:"area",label:"Area (m²)"},{key:"orientation",label:"Orientation"},{key:"incline",label:"Incline"},{key:"storage",label:"Storage (L)"},{key:"circulation",label:"Circulation"}]);
-  dataTable("Photovoltaic (PV)","1.01",
-    readRowTable(renTable.pv), [{key:"name",label:"Name"},{key:"area",label:"Area (m²)"},{key:"silicon",label:"Silicon"},{key:"orientation",label:"Orientation"},{key:"power",label:"Power (kWp)"}]);
-  dataTable("Wind Generator","",
-    readRowTable(renTable.wind), [{key:"name",label:"Name"},{key:"terrain",label:"Terrain"},{key:"diameter",label:"Diameter (m)"},{key:"height",label:"Height (m)"},{key:"power",label:"Power (kW)"}]);
+  const renRows = [];
+  REN_SYSTEMS.forEach((name,i)=>{
+    if(checked("ren_present_"+i)) renRows.push({name, spec:val("ren_spec_"+i), notes:val("ren_notes_"+i)});
+  });
+  if(renRows.length){
+    dataTable("Renewable Systems Present","1.01", renRows, [{key:"name",label:"System"},{key:"spec",label:"Specification Obtained"},{key:"notes",label:"Notes / Location"}]);
+  } else {
+    ps.appendChild(el("h2",{},"Renewables"));
+    ps.appendChild(el("div",{class:"notesblock"},"No renewable systems recorded as present."));
+  }
   ps.appendChild(el("div",{class:"notesblock"}, el("span",{class:"k"},"Renewables Justification Notes"), val("ren_notes")||"—"));
 
   // ---- Photographs taken ----
