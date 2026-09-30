@@ -9,7 +9,7 @@
 
 <!-- Build stamp. INCREMENT THIS ON EVERY DEPLOYMENT (YYYY-MM-DD-NN).
      The freshness check below reads it, so it lives in exactly one place. -->
-<meta name="build-version" content="2026-09-30-07">
+<meta name="build-version" content="2026-09-30-08">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -1888,7 +1888,7 @@ function buildHvacPanel(){
   const controls = ["LT/LTemp (local time / local temperature)","CT (central time)","Local time and local temperature controls","Central time and local temperature","OPTI (optimum start/stop)","WC (weather comp)","Manual"];
 
   hvacTable.systems = makeRowTable("hvacsys",
-    [{key:"name",label:"HVAC System Model"},
+    [{key:"name",label:"Make Model"},
      {key:"area",label:"Area Served"},
      {key:"type",label:"HVAC Type",type:"select",options:hvacTypes},
      {key:"fuel",label:"Fuel",type:"select",options:fuels},
@@ -1907,7 +1907,8 @@ function buildDhwPanel(){
 
   const fuels = ["Natural gas","Grid electricity","LPG","Oil","Coal","Biogas","Biomass","Anthracite","Waste heat","Smokeless fuel","Dual fuel"];
   dhwTable.systems = makeRowTable("dhwsys",
-    [{key:"name",label:"Area Served",type:"select",options:["Toilets","Food prep","Bathroom","Showers","Tea make","All areas","Other"]},
+    [{key:"makemodel",label:"Make Model"},
+     {key:"name",label:"Area Served",type:"select",options:["Toilets","Food prep","Bathroom","Showers","Tea make","All areas","Other"]},
      {key:"type",label:"Type",type:"select",options:["Standalone","Instantaneous","Instantaneous Combi","Same as HVAC system","Solar thermal","Heat pump"]},
      {key:"fuel",label:"Fuel",type:"select",options:fuels},
      {key:"storage",label:"Storage Vol (L)"},
@@ -1920,6 +1921,7 @@ function buildDhwPanel(){
 
   dhwTable.ahu = makeRowTable("ahu",
     [{key:"name",label:"AHU Name"},
+     {key:"makemodel",label:"Make Model"},
      {key:"controls",label:"Controls"},
      {key:"sfp",label:"SFP (W/L/s)"},
      {key:"heatrecovery",label:"Heat Recovery?",type:"select",options:["Yes","No","Unknown"]},
@@ -1927,7 +1929,8 @@ function buildDhwPanel(){
   panel.appendChild(section("Mechanical Ventilation (AHU)","6.07 · 6.08 · 6.09 · 6.12", dhwTable.ahu));
 
   dhwTable.lme = makeRowTable("lme",
-    [{key:"controls",label:"Controls",type:"select",options:["Manual","Automatic","Timer","Humidity sensor"]},
+    [{key:"makemodel",label:"Make Model"},
+     {key:"controls",label:"Controls",type:"select",options:["Manual","Automatic","Timer","Humidity sensor"]},
      {key:"motor",label:"Motor (W)"},
      {key:"location",label:"Location",type:"select",options:["Toilet","Showers","Food prep","Storeroom","Other"]}], "Add local mechanical exhaust");
   panel.appendChild(section("Local Mechanical Exhaust","6.07 · 6.08 · 6.09 · 6.12", dhwTable.lme));
@@ -3055,18 +3058,18 @@ function collectReport(){
   /* 4 - HVAC */
   const s4 = S("Heating & Cooling");
   sub(s4,"HVAC Systems","2.02 · 3.05 · 3.06 · 5.01 · 6.01 · 6.03 · 6.04 · 6.11 · 6.13");
-  table(s4,[{key:"name",label:"System / Model",w:2.6},{key:"area",label:"Area Served",w:2},{key:"type",label:"Type",w:2.4},{key:"fuel",label:"Fuel",w:1.4},{key:"controls",label:"Controls",w:2}], readRowTable(hvacTable.systems));
+  table(s4,[{key:"name",label:"Make Model",w:2.6},{key:"area",label:"Area Served",w:2},{key:"type",label:"Type",w:2.4},{key:"fuel",label:"Fuel",w:1.4},{key:"controls",label:"Controls",w:2}], readRowTable(hvacTable.systems));
   note(s4,"HVAC justification notes",val("hv_notes"));
 
   /* 5 - DHW & ventilation */
   const s5 = S("Hot Water & Ventilation");
   sub(s5,"Domestic Hot Water","6.04 · 6.05 · 6.06 · 6.10");
-  table(s5,[{key:"name",label:"Area Served",w:1.6},{key:"type",label:"Type",w:1.9},{key:"fuel",label:"Fuel",w:1.3},{key:"storage",label:"Storage (L)",w:1.1},{key:"insulationtype",label:"Insulation Type",w:1.5},{key:"insulation",label:"Insul. (mm)",w:1},{key:"circulation",label:"Circ. Loop",w:1}], readRowTable(dhwTable.systems));
+  table(s5,[{key:"makemodel",label:"Make Model",w:1.9},{key:"name",label:"Area Served",w:1.4},{key:"type",label:"Type",w:1.7},{key:"fuel",label:"Fuel",w:1.3},{key:"storage",label:"Storage (L)",w:1.1},{key:"insulationtype",label:"Insulation Type",w:1.5},{key:"insulation",label:"Insul. (mm)",w:1},{key:"circulation",label:"Circ. Loop",w:1}], readRowTable(dhwTable.systems));
   note(s5,"DHW justification notes",val("dhw_notes"));
   sub(s5,"Mechanical Ventilation (AHU)","6.07 · 6.08 · 6.09 · 6.12");
-  table(s5,[{key:"name",label:"AHU",w:2},{key:"controls",label:"Controls",w:2.2},{key:"sfp",label:"SFP (W/l/s)",w:1.3},{key:"heatrecovery",label:"Heat Recovery",w:1.4},{key:"hrtype",label:"Heat Recovery Type",w:3}], readRowTable(dhwTable.ahu));
+  table(s5,[{key:"name",label:"AHU",w:1.5},{key:"makemodel",label:"Make Model",w:2.2},{key:"controls",label:"Controls",w:1.8},{key:"sfp",label:"SFP (W/l/s)",w:1.3},{key:"heatrecovery",label:"Heat Recovery",w:1.4},{key:"hrtype",label:"Heat Recovery Type",w:2.4}], readRowTable(dhwTable.ahu));
   sub(s5,"Local Mechanical Exhaust","6.07 · 6.08 · 6.09 · 6.12");
-  table(s5,[{key:"location",label:"Location",w:3},{key:"controls",label:"Controls",w:4},{key:"motor",label:"Motor (W)",w:2}], readRowTable(dhwTable.lme));
+  table(s5,[{key:"makemodel",label:"Make Model",w:3},{key:"location",label:"Location",w:2.4},{key:"controls",label:"Controls",w:2.6},{key:"motor",label:"Motor (W)",w:2}], readRowTable(dhwTable.lme));
   note(s5,"Ventilation justification notes",val("vent_notes"));
 
   /* 6 - Lighting */
