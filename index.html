@@ -9,7 +9,11 @@
 
 <!-- Build stamp. INCREMENT THIS ON EVERY DEPLOYMENT (YYYY-MM-DD-NN).
      The freshness check below reads it, so it lives in exactly one place. -->
+<<<<<<< HEAD
 <meta name="build-version" content="2026-09-30-03">
+=======
+<meta name="build-version" content="2026-09-30-01">
+>>>>>>> 0477fbd5afa8c4e56eaf62446eb92763691785b2
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -250,6 +254,7 @@ body{
 .modal-card p{margin:0 0 20px;color:var(--text-color);font-size:14px;line-height:1.55;word-break:break-word;}
 .modal-btns{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;}
 
+<<<<<<< HEAD
 /* Lamp reference cards + photo viewer */
 .lamp-ref-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;}
 .lamp-ref{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:#fff;border:1px solid var(--border-color);border-radius:10px;padding:10px 12px;cursor:pointer;font:inherit;color:inherit;transition:border-color .15s,background .15s,box-shadow .15s;}
@@ -277,6 +282,8 @@ body{
 .lamp-photo-msg code{background:#fff;border:1px solid var(--border-color);border-radius:4px;padding:1px 5px;}
 .lamp-tips{margin:14px 0 0 !important;font-size:13px !important;color:var(--graphite-700) !important;}
 
+=======
+>>>>>>> 0477fbd5afa8c4e56eaf62446eb92763691785b2
 /* EPC band badge + "This survey" panel */
 .epc-band-badge{display:inline-flex;align-items:center;justify-content:center;min-width:54px;height:40px;padding:0 14px;border-radius:8px;font-weight:700;font-size:18px;background:#F1F5F9;color:var(--muted);border:1px dashed var(--border-color);}
 .epc-band-badge.set{border:none;color:#fff;}
@@ -1919,6 +1926,7 @@ const LAMP_TYPES = [
   ["HPS","High-pressure sodium"],["LED","Light-emitting diode"],["FL","Fluorescent, no further details"],
   ["Other","Other (describe in notes)"]
 ];
+<<<<<<< HEAD
 /* ---------- Lamp reference photos ----------
    Photos live in the GitHub repo next to index.html:
      images/<folder>/1.jpg  and  images/<folder>/2.jpg
@@ -1989,6 +1997,8 @@ function showLampPhoto(code, desc){
   setTimeout(()=> x.focus(), 0);
 }
 
+=======
+>>>>>>> 0477fbd5afa8c4e56eaf62446eb92763691785b2
 const LIGHT_CONTROLS = ["Manual switching only","Occupancy sensors","Dimming","Manual on, auto off","Time control to display lighting","Other"];
 function lampChecklist(prefix){
   const wrap = el("div");
