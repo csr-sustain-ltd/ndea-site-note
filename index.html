@@ -9,7 +9,7 @@
 
 <!-- Build stamp. INCREMENT THIS ON EVERY DEPLOYMENT (YYYY-MM-DD-NN).
      The freshness check below reads it, so it lives in exactly one place. -->
-<meta name="build-version" content="2026-09-30-05">
+<meta name="build-version" content="2026-09-30-06">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -283,6 +283,8 @@ body{
 .lamp-tips{margin:14px 0 0 !important;font-size:13px !important;color:var(--graphite-700) !important;}
 
 /* EPC band badge + "This survey" panel */
+.calc-box{display:flex;align-items:center;min-height:42px;padding:0 14px;border-radius:8px;background:#F1F5F9;border:1px dashed var(--border-color);color:var(--muted);font-size:14px;}
+.calc-box.set{background:var(--primary-soft);border:1px solid #BFDAD4;color:var(--primary-color);font-weight:700;font-size:16px;}
 .epc-band-badge{display:inline-flex;align-items:center;justify-content:center;min-width:54px;height:40px;padding:0 14px;border-radius:8px;font-weight:700;font-size:18px;background:#F1F5F9;color:var(--muted);border:1px dashed var(--border-color);}
 .epc-band-badge.set{border:none;color:#fff;}
 .epc-band-badge.dark{color:#1E293B;}
@@ -1496,6 +1498,19 @@ function onAssessorChange(){
   else { img.removeAttribute("src"); box.style.display = "none"; }
 }
 
+/* Air permeability (m³/h·m² @ 50 Pa) by Building Regulation age */
+const AIR_PERM_BY_REGS = {
+  "Pre 1974 Building":25, "1975/80 Building":25, "1980/85 Building":25, "1990 Building":25,
+  "1995 Building":15, "2002 Building":15, "2006 Onwards":10
+};
+function airPermValue(){ const v = AIR_PERM_BY_REGS[val("p_bregs_age")]; return v===undefined ? "" : String(v); }
+function syncAirPerm(){
+  const box = document.getElementById("p_airperm"); if(!box) return;
+  const regs = val("p_bregs_age"), v = airPermValue();
+  box.classList.toggle("set", !!v);
+  box.textContent = v ? v+" m³/h·m²" : (regs ? "No value set for this option" : "—");
+}
+
 /* Shows one or two extension Building Regs boxes depending on the answer */
 function syncExtensions(){
   const v = val("p_has_ext");
@@ -1557,7 +1572,10 @@ function buildProjectPanel(){
     "Sui Generis"
   ]), true));
   const BREGS_AGES = ["1975/80 Building","1980/85 Building","1990 Building","1995 Building","2002 Building","2006 Onwards","Pre 1974 Building","Solid Brick Building"];
-  g1.appendChild(field("Building Regulation Age", selectInput("p_bregs_age", BREGS_AGES)));
+  const bregsSel = selectInput("p_bregs_age", BREGS_AGES);
+  g1.appendChild(field("Building Regulation Age", bregsSel));
+  g1.appendChild(field("Air Permeability (m³/h·m² @ 50 Pa)", el("div",{id:"p_airperm", class:"calc-box", "aria-live":"polite"},"—"), false, "Set automatically from the Building Regulation Age"));
+  bregsSel.addEventListener("change", syncAirPerm);
   const hasExt = selectInput("p_has_ext",["Yes - 1 extension","Yes - 2 extensions","No"]);
   g1.appendChild(field("Is there an extension on site?", hasExt));
   const ext1 = field("Building Regulation Age – Extension 1", selectInput("p_bregs_ext_age", BREGS_AGES));
@@ -1580,7 +1598,11 @@ function buildProjectPanel(){
 
   g2.appendChild(field("Number of Floors", selectInput("p_floors",["1","2","3","4","5","6","7+"])));
   g2.appendChild(field("Conservation Status", selectInput("p_conservation",["No","Listed Building","Conservation Area"])));
-  g2.appendChild(field("Power factor better than 0.9?", selectInput("p_pf",["Yes","No","Unknown"]), false, "Established during the site survey"));
+  const pfField = field("Power factor better than 0.9?", selectInput("p_pf",["Yes - 0.95","No","Unknown"]), false,
+    "Established during the site survey. Leave at the SBEM default (<0.9) unless there is a photo of the correction device or other compelling evidence.");
+  const pfChip = convChip("5.01"); pfChip.style.marginLeft = "8px";
+  pfField.querySelector("label").appendChild(pfChip);
+  g2.appendChild(pfField);
   g2.appendChild(field("Risk Assessment", el("div",{class:"photoitem"},
     el("input",{type:"checkbox",id:"p_risk_done"}), el("label",{for:"p_risk_done"},"On-site risk assessment completed (mandatory)")), true));
 
@@ -1809,7 +1831,7 @@ function buildFabricPanel(){
   panel.appendChild(section("Floor Construction","3.07", fabricTables.floors));
 
   fabricTables.glazing = makeRowTable("glazing",
-    [{key:"name",label:"Glazing Name",type:"select",options:["G1","G2","G3","Rooflight","Display Window"]},
+    [{key:"name",label:"Glazing Name",type:"select",options:["G1","G2","G3","Rooflight","Display Window","Secondary Glazing","Block Glazing"]},
      {key:"frame",label:"Frame",type:"select",options:["Aluminium","uPVC","Wood","Metal","No Frame","Other"]},
      {key:"coating",label:"Coating",type:"select",options:["Clear","Low-e","Tinted","Reflective"]},
      {key:"units",label:"Units",type:"select",options:GLAZING_UNITS}], "Add glazing type");
@@ -2491,9 +2513,15 @@ const CONV_DATA = {
   title: "Electric Power Factor",
   date: "21 Jan 2013",
   body: [
-    ["Default", "Leave the SBEM power factor at the default <strong>&lt;0.9</strong> unless a photograph of the power factor correction device and/or other compelling evidence is provided."],
-    ["Photograph only", "Where only a photograph of the device is available, amend the power factor to <strong>'0.9 to 0.95'</strong>."],
-    ["Compelling evidence", "Photographic evidence confirming the actual figure (select the matching SBEM option); equipment specifications, name-plates, specification manuals, BMS printouts; utility bills; power factor calculations by electricians or power engineering specialists; meter readings incorporating reactive unit consumption plus calculations."]
+    ["Default", "Electric power factor within SBEM must be left at the default value of <strong>&lt;0.9</strong> unless you have provided a photograph of the power factor correction device and/or other compelling evidence to amend this figure."],
+    ["Photograph only", "Where only a photograph of the power factor correction device is available, the power factor shall be amended to <strong>'0.9 to 0.95'</strong>."],
+    ["Compelling evidence", "<ul style=\"margin:4px 0 0;padding-left:18px;\">"
+      + "<li><strong>Photographic evidence</strong> – if the photograph confirms the actual power factor figure from the device, select the most appropriate figure within the SBEM power factor drop-down options. If the photograph cannot confirm the actual figure but shows evidence of the power factor device, select <strong>'0.90–0.95'</strong> within SBEM.</li>"
+      + "<li><strong>Equipment specifications</strong> – name-plates, specification manuals and printouts from Building Management Systems (BMS).</li>"
+      + "<li><strong>Utility bills.</strong></li>"
+      + "<li><strong>Power factor calculations</strong> – conducted by electricians and power engineering specialists.</li>"
+      + "<li><strong>Meter readings</strong> – incorporating reactive unit consumption and appropriate calculations.</li>"
+      + "</ul>"]
   ]
 },
 
@@ -2956,7 +2984,7 @@ function collectReport(){
   sub(s1,"Building");
   const ext = val("p_has_ext");
   const bPairs = [["Building use",val("p_use")],["Building age",val("p_age")],["Number of floors",val("p_floors")],["Occupancy",radioVal("occupancy")],
-    ["Conservation status",val("p_conservation")],["Building Regulation age",val("p_bregs_age")],["Extension on site",ext]];
+    ["Conservation status",val("p_conservation")],["Building Regulation age",val("p_bregs_age")],["Air permeability", airPermValue() ? airPermValue()+" m³/h·m² @ 50 Pa" : ""],["Extension on site",ext]];
   if(ext.indexOf("Yes")===0) bPairs.push(["Extension 1 – Building Regs age",val("p_bregs_ext_age")]);
   if(ext.indexOf("Yes - 2")===0) bPairs.push(["Extension 2 – Building Regs age",val("p_bregs_ext2_age")]);
   bPairs.push(["Power factor > 0.9",val("p_pf")],["Risk assessment completed", R.meta.riskDone ? "Yes" : "NOT RECORDED"]);
@@ -3718,6 +3746,7 @@ document.getElementById("btn-clear").addEventListener("click", ()=>{
   Object.values(renTable).forEach(t=> t._tbody && (t._tbody.innerHTML=""));
   onAssessorChange();
   syncExtensions();
+  syncAirPerm();
   const lcOther = document.getElementById("lc_other_wrap"); if(lcOther) lcOther.style.display = "none";
   epcRefresh();
   document.getElementById("status-text").textContent = "Draft — not yet generated";
