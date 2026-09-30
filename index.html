@@ -9,7 +9,7 @@
 
 <!-- Build stamp. INCREMENT THIS ON EVERY DEPLOYMENT (YYYY-MM-DD-NN).
      The freshness check below reads it, so it lives in exactly one place. -->
-<meta name="build-version" content="2026-09-30-04">
+<meta name="build-version" content="2026-09-30-05">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -1729,9 +1729,10 @@ function readRowTable(wrap){
 
 /* ---------- FABRIC PANEL ---------- */
 const GLAZING_UNITS = [
+  "4mm single glazing (clear glass)",
+  "6mm single glazing (clear glass)",
   "10-16-16 uncoated, air filled",
   "10-16-16 low-e, air filled",
-  "4mm single glazing (clear glass)",
   "4-12-4 low-e, air filled",
   "4-12-4 uncoated glass, air filled",
   "4-12-4 uncoated, argon filled",
@@ -1754,7 +1755,6 @@ const GLAZING_UNITS = [
   "4-6-4 uncoated, air filled",
   "4-6-4-6-4 air filled, triple glazing",
   "4-6-4-6-4 air filled, triple glazing, low-e",
-  "6mm single glazing (clear glass)",
   "6-16-6 coated, air filled",
   "6-16-6 uncoated, air filled",
   "6-20-6 uncoated, air filled",
@@ -1797,7 +1797,7 @@ function buildFabricPanel(){
   fabricTables.roofs = makeRowTable("roofs",
     [{key:"name",label:"Roof Name / ID",type:"select",options:["Slates or Tiles","Cladding System","Asbestos","Concrete","Light deck"]},
      {key:"type",label:"Type",type:"select",options:["Pitched","Flat"]},
-     {key:"insulation",label:"Insulation?",type:"select",options:["As Built","Horizontal Insulation - 25mm","Horizontal Insulation - 50mm","Horizontal Insulation - 75mm","Horizontal Insulation - 100mm","Horizontal Insulation - 150mm","Horizontal Insulation - 200mm","Horizontal Insulation - 250mm","Horizontal Insulation - 300mm"]},
+     {key:"insulation",label:"Insulation?",type:"select",options:["As Built","Insulation - 25mm","Insulation - 50mm","Insulation - 75mm","Insulation - 100mm","Insulation - 150mm","Insulation - 200mm","Insulation - 250mm","Insulation - 300mm"]},
      {key:"location",label:"Roof Location",type:"select",options:locations}], "Add roof type");
   panel.appendChild(section("Roof Construction","3.07 · 4.05", fabricTables.roofs));
 
@@ -1884,7 +1884,7 @@ function buildDhwPanel(){
 
   const fuels = ["Natural gas","Grid electricity","LPG","Oil","Coal","Biogas","Biomass","Anthracite","Waste heat","Smokeless fuel","Dual fuel"];
   dhwTable.systems = makeRowTable("dhwsys",
-    [{key:"name",label:"Area Served",type:"select",options:["Toilets","Food prep","Bathroom","Showers","Tea make","Other"]},
+    [{key:"name",label:"Area Served",type:"select",options:["Toilets","Food prep","Bathroom","Showers","Tea make","All areas","Other"]},
      {key:"type",label:"Type",type:"select",options:["Standalone","Instantaneous","Instantaneous Combi","Same as HVAC system","Solar thermal","Heat pump"]},
      {key:"fuel",label:"Fuel",type:"select",options:fuels},
      {key:"storage",label:"Storage Vol (L)"},
