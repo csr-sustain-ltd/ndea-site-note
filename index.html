@@ -9,7 +9,7 @@
 
 <!-- Build stamp. INCREMENT THIS ON EVERY DEPLOYMENT (YYYY-MM-DD-NN).
      The freshness check below reads it, so it lives in exactly one place. -->
-<meta name="build-version" content="2026-09-30-06">
+<meta name="build-version" content="2026-09-30-08">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -258,23 +258,24 @@ body{
 .lamp-ref-code{font-weight:700;color:var(--primary-color);min-width:64px;font-size:13px;}
 .lamp-ref-desc{flex:1;font-size:12px;color:var(--graphite-700);line-height:1.35;}
 .lamp-ref-view{font-size:11px;font-weight:600;color:var(--primary-color);white-space:nowrap;}
-.lamp-card{max-width:min(1100px,96vw);width:96vw;padding:18px 20px 20px;max-height:96vh;overflow-y:auto;}
-.lamp-gallery{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-@media(max-width:560px){.lamp-gallery{grid-template-columns:1fr;}}
+/* Photos are landscape, 1408 × 768 (about 11:6). Boxes use the same shape so
+   the pictures fill them edge to edge with no grey bars or cropping. */
+.lamp-card{max-width:min(1040px,96vw);width:96vw;padding:18px 20px 20px;max-height:96vh;overflow-y:auto;}
+.lamp-gallery{display:grid;grid-template-columns:1fr;gap:12px;}
 .lamp-hint{font-size:11px;color:var(--muted);margin-top:6px;}
-.lamp-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px;}
-.lamp-card-head h3{margin:2px 0 0;font-size:17px;}
-.lamp-card-code{display:inline-block;background:var(--primary-color);color:#fff;font-weight:700;font-size:12px;padding:2px 8px;border-radius:6px;}
-.lamp-card-close{background:none;border:none;font-size:28px;line-height:1;color:var(--muted);cursor:pointer;padding:0 4px;}
-.lamp-card-close:hover{color:var(--text-color);}
-.lamp-photo{position:relative;background:#F1F5F9;border-radius:10px;min-height:200px;height:min(68vh,640px);display:flex;align-items:center;justify-content:center;overflow:hidden;}
+.lamp-photo{position:relative;background:#F1F5F9;border-radius:10px;width:100%;aspect-ratio:1408/768;
+  /* never taller than the screen allows, so a whole photo is always visible */
+  max-height:calc(96vh - 190px);display:flex;align-items:center;justify-content:center;overflow:hidden;}
 .lamp-photo a{display:flex;align-items:center;justify-content:center;width:100%;height:100%;}
-/* contain = show the whole photo, never crop it */
-.lamp-photo img{display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;cursor:zoom-in;}
+.lamp-photo img{display:block;width:100%;height:100%;object-fit:contain;cursor:zoom-in;}
+/* very wide screens: two photos side by side */
+@media(min-width:1500px) and (min-height:760px){
+  .lamp-card{max-width:1400px;}
+  .lamp-gallery{grid-template-columns:1fr 1fr;}
+}
 @media(max-width:560px){
-  .lamp-card{padding:14px 14px 16px;}
-  .lamp-photo{height:auto;min-height:160px;}
-  .lamp-photo img{max-height:70vh;}
+  .lamp-card{padding:14px 12px 16px;}
+  .lamp-photo{max-height:none;}
 }
 .lamp-photo:not(.loaded) img{position:absolute;opacity:0;}
 .lamp-photo-msg{padding:24px;text-align:center;color:var(--muted);font-size:13px;line-height:1.6;}
@@ -1887,7 +1888,7 @@ function buildHvacPanel(){
   const controls = ["LT/LTemp (local time / local temperature)","CT (central time)","Local time and local temperature controls","Central time and local temperature","OPTI (optimum start/stop)","WC (weather comp)","Manual"];
 
   hvacTable.systems = makeRowTable("hvacsys",
-    [{key:"name",label:"HVAC System Model"},
+    [{key:"name",label:"Make Model"},
      {key:"area",label:"Area Served"},
      {key:"type",label:"HVAC Type",type:"select",options:hvacTypes},
      {key:"fuel",label:"Fuel",type:"select",options:fuels},
@@ -1906,7 +1907,8 @@ function buildDhwPanel(){
 
   const fuels = ["Natural gas","Grid electricity","LPG","Oil","Coal","Biogas","Biomass","Anthracite","Waste heat","Smokeless fuel","Dual fuel"];
   dhwTable.systems = makeRowTable("dhwsys",
-    [{key:"name",label:"Area Served",type:"select",options:["Toilets","Food prep","Bathroom","Showers","Tea make","All areas","Other"]},
+    [{key:"makemodel",label:"Make Model"},
+     {key:"name",label:"Area Served",type:"select",options:["Toilets","Food prep","Bathroom","Showers","Tea make","All areas","Other"]},
      {key:"type",label:"Type",type:"select",options:["Standalone","Instantaneous","Instantaneous Combi","Same as HVAC system","Solar thermal","Heat pump"]},
      {key:"fuel",label:"Fuel",type:"select",options:fuels},
      {key:"storage",label:"Storage Vol (L)"},
@@ -1919,6 +1921,7 @@ function buildDhwPanel(){
 
   dhwTable.ahu = makeRowTable("ahu",
     [{key:"name",label:"AHU Name"},
+     {key:"makemodel",label:"Make Model"},
      {key:"controls",label:"Controls"},
      {key:"sfp",label:"SFP (W/L/s)"},
      {key:"heatrecovery",label:"Heat Recovery?",type:"select",options:["Yes","No","Unknown"]},
@@ -1926,7 +1929,8 @@ function buildDhwPanel(){
   panel.appendChild(section("Mechanical Ventilation (AHU)","6.07 · 6.08 · 6.09 · 6.12", dhwTable.ahu));
 
   dhwTable.lme = makeRowTable("lme",
-    [{key:"controls",label:"Controls",type:"select",options:["Manual","Automatic","Timer","Humidity sensor"]},
+    [{key:"makemodel",label:"Make Model"},
+     {key:"controls",label:"Controls",type:"select",options:["Manual","Automatic","Timer","Humidity sensor"]},
      {key:"motor",label:"Motor (W)"},
      {key:"location",label:"Location",type:"select",options:["Toilet","Showers","Food prep","Storeroom","Other"]}], "Add local mechanical exhaust");
   panel.appendChild(section("Local Mechanical Exhaust","6.07 · 6.08 · 6.09 · 6.12", dhwTable.lme));
@@ -3054,18 +3058,18 @@ function collectReport(){
   /* 4 - HVAC */
   const s4 = S("Heating & Cooling");
   sub(s4,"HVAC Systems","2.02 · 3.05 · 3.06 · 5.01 · 6.01 · 6.03 · 6.04 · 6.11 · 6.13");
-  table(s4,[{key:"name",label:"System / Model",w:2.6},{key:"area",label:"Area Served",w:2},{key:"type",label:"Type",w:2.4},{key:"fuel",label:"Fuel",w:1.4},{key:"controls",label:"Controls",w:2}], readRowTable(hvacTable.systems));
+  table(s4,[{key:"name",label:"Make Model",w:2.6},{key:"area",label:"Area Served",w:2},{key:"type",label:"Type",w:2.4},{key:"fuel",label:"Fuel",w:1.4},{key:"controls",label:"Controls",w:2}], readRowTable(hvacTable.systems));
   note(s4,"HVAC justification notes",val("hv_notes"));
 
   /* 5 - DHW & ventilation */
   const s5 = S("Hot Water & Ventilation");
   sub(s5,"Domestic Hot Water","6.04 · 6.05 · 6.06 · 6.10");
-  table(s5,[{key:"name",label:"Area Served",w:1.6},{key:"type",label:"Type",w:1.9},{key:"fuel",label:"Fuel",w:1.3},{key:"storage",label:"Storage (L)",w:1.1},{key:"insulationtype",label:"Insulation Type",w:1.5},{key:"insulation",label:"Insul. (mm)",w:1},{key:"circulation",label:"Circ. Loop",w:1}], readRowTable(dhwTable.systems));
+  table(s5,[{key:"makemodel",label:"Make Model",w:1.9},{key:"name",label:"Area Served",w:1.4},{key:"type",label:"Type",w:1.7},{key:"fuel",label:"Fuel",w:1.3},{key:"storage",label:"Storage (L)",w:1.1},{key:"insulationtype",label:"Insulation Type",w:1.5},{key:"insulation",label:"Insul. (mm)",w:1},{key:"circulation",label:"Circ. Loop",w:1}], readRowTable(dhwTable.systems));
   note(s5,"DHW justification notes",val("dhw_notes"));
   sub(s5,"Mechanical Ventilation (AHU)","6.07 · 6.08 · 6.09 · 6.12");
-  table(s5,[{key:"name",label:"AHU",w:2},{key:"controls",label:"Controls",w:2.2},{key:"sfp",label:"SFP (W/l/s)",w:1.3},{key:"heatrecovery",label:"Heat Recovery",w:1.4},{key:"hrtype",label:"Heat Recovery Type",w:3}], readRowTable(dhwTable.ahu));
+  table(s5,[{key:"name",label:"AHU",w:1.5},{key:"makemodel",label:"Make Model",w:2.2},{key:"controls",label:"Controls",w:1.8},{key:"sfp",label:"SFP (W/l/s)",w:1.3},{key:"heatrecovery",label:"Heat Recovery",w:1.4},{key:"hrtype",label:"Heat Recovery Type",w:2.4}], readRowTable(dhwTable.ahu));
   sub(s5,"Local Mechanical Exhaust","6.07 · 6.08 · 6.09 · 6.12");
-  table(s5,[{key:"location",label:"Location",w:3},{key:"controls",label:"Controls",w:4},{key:"motor",label:"Motor (W)",w:2}], readRowTable(dhwTable.lme));
+  table(s5,[{key:"makemodel",label:"Make Model",w:3},{key:"location",label:"Location",w:2.4},{key:"controls",label:"Controls",w:2.6},{key:"motor",label:"Motor (W)",w:2}], readRowTable(dhwTable.lme));
   note(s5,"Ventilation justification notes",val("vent_notes"));
 
   /* 6 - Lighting */
