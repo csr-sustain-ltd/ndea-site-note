@@ -9,7 +9,7 @@
 
 <!-- Build stamp. INCREMENT THIS ON EVERY DEPLOYMENT (YYYY-MM-DD-NN).
      The freshness check below reads it, so it lives in exactly one place. -->
-<meta name="build-version" content="2026-10-01-04">
+<meta name="build-version" content="2026-10-01-05">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -336,8 +336,8 @@ body{
 }
 
 /* ---------- Assessor toolbox (full screen) ---------- */
-.tab-btn.tab-toolbox{flex:0 0 auto;min-width:0;padding:10px 16px;margin:7px 10px 7px 6px;border:none;border-radius:999px;background:#F59E0B;color:#1F2937;font-weight:700;box-shadow:0 2px 6px rgba(245,158,11,.35);}
-.tab-btn.tab-toolbox:hover{background:#FBBF24;color:#111827;}
+.btn.btn-toolbox{background:#F59E0B;color:#1F2937;border:none;font-weight:700;box-shadow:0 2px 6px rgba(245,158,11,.35);}
+.btn.btn-toolbox:hover{background:#FBBF24;color:#111827;}
 body.tbx-open{overflow:hidden;}
 .tbx{position:fixed;inset:0;z-index:1100;background:#EEF3F2;display:flex;flex-direction:column;font-size:15px;color:#1E293B;}
 .tbx-bar{display:flex;align-items:center;gap:12px;background:var(--primary-color);color:#fff;padding:12px 20px;padding-top:max(12px, env(safe-area-inset-top));box-shadow:0 2px 10px rgba(0,0,0,.15);}
@@ -1014,6 +1014,7 @@ input.epc-masked{color:transparent !important;text-shadow:0 0 9px rgba(30,41,59,
 <div class="actionbar">
   <div class="status">STATUS: <span id="status-text">Draft — not yet generated</span></div>
   <div class="buttons">
+    <button class="btn btn-toolbox" id="btn-toolbox" type="button" onclick="openToolbox()" title="Calculators and reference data for modelling">🧰 Toolbox</button>
     <button class="btn btn-secondary" id="btn-clear">Clear Form</button>
     <button class="btn btn-primary" id="btn-next">Next</button>
     <button class="btn btn-primary" id="btn-generate" style="display:none;">Generate Word Site Note</button>
@@ -2288,7 +2289,7 @@ const GUIDE_CATS = [
   {id:"Window",   label:"Windows & Glazing", folders:["Window","Windows"]},
   {id:"Door",     label:"Doors",             folders:["Door","Doors"]},
   {id:"HVAC",     label:"HVAC Systems",      folders:["HVAC","HAVC"]},
-  {id:"HVACCtl",  label:"HVAC Controls",     folders:["hvac control","hvac controls","HVAC Control","HVAC Controls"]},
+  {id:"HVACCtl",  label:"HVAC Controls",     folders:["hvac control","hvac controls","HVAC Control","HVAC Controls"], exclude:/extract|ventilation/i},
   {id:"DHW",      label:"Hot Water",         folders:["DHW"]},
   {id:"MechVent", label:"Mechanical Ventilation", folders:["mechanical ventilation","Mechanical Ventilation","mech vent"], fuzzy:"ventilation"},
   {id:"LocalExt", label:"Local Extract",     folders:["local extract","Local Extract","local mechanical extract","local mechanical exhaust"], fuzzy:"extract"},
@@ -2322,7 +2323,7 @@ let guideManifest;   // optional images/manifest.json fallback, loaded once
 let guideDirsPromise = null;
 const guideNorm = s => String(s).toLowerCase().replace(/[^a-z0-9]/g,"");
 function guideDirs(repo){
-  const key = "ndea-guide-dirs:"+repo;
+  const key = "ndea-guide-v2-dirs:"+repo;
   const c = guideCacheGet(key);
   if(c && Date.now()-c.t < GUIDE_CACHE_HOURS*3600e3) return Promise.resolve(c.files);
   if(!guideDirsPromise){
@@ -2350,7 +2351,7 @@ async function guideList(cat){
       cat._resolved = true;
     }
   }
-  const key = "ndea-guide:"+repo+":"+cat.id;
+  const key = "ndea-guide-v2:"+repo+":"+cat.id;
   const cached = guideCacheGet(key);
   if(cached && Date.now()-cached.t < GUIDE_CACHE_HOURS*3600e3) return cached;
 
@@ -2363,7 +2364,7 @@ async function guideList(cat){
         if(r.status===404) continue;
         if(!r.ok){ apiError = r.status===403 ? "GitHub's hourly limit has been reached" : "GitHub returned an error ("+r.status+")"; break; }
         const items = await r.json();
-        const files = (Array.isArray(items)?items:[]).filter(i=> i.type==="file" && GUIDE_IMG_EXT.test(i.name)).map(i=>i.name);
+        const files = (Array.isArray(items)?items:[]).filter(i=> i.type==="file" && GUIDE_IMG_EXT.test(i.name) && !(cat.exclude && cat.exclude.test(i.name))).map(i=>i.name);
         const v = {t:Date.now(), folder, files};
         if(files.length) guideCacheSet(key, v);
         return v;
@@ -2445,7 +2446,7 @@ function openGuide(catId){
     }
     if(guideState.cat!==cat.id || viewer) return;        // user moved on while loading
     view.innerHTML = "";
-    const files = res.files.slice().sort((a,b)=> guideLabel(a).localeCompare(guideLabel(b), "en", {numeric:true, sensitivity:"base"}));
+    const files = res.files.filter(f=> !(cat.exclude && cat.exclude.test(f))).sort((a,b)=> guideLabel(a).localeCompare(guideLabel(b), "en", {numeric:true, sensitivity:"base"}));
     const base = "images/"+encodeURIComponent(res.folder)+"/";
     if(!files.length){
       view.appendChild(el("div",{class:"guide-msg"}, "No photos uploaded yet.", el("br"), el("span",{}, "Add images to ", el("code",{},"images/"+cat.folders[0]+"/"), " in the repo.")));
@@ -3009,7 +3010,7 @@ function lampChecklist(prefix){
     const cb = el("input",{type:"checkbox",id});
     if(code==="Other") otherCb = cb;
     grid.appendChild(el("div",{class:"photoitem"}, cb,
-      el("label",{for:id}, desc ? el("strong",{style:"font-family:var(--mono);"},code) : el("strong",{},code), desc ? " – "+desc : "")));
+      el("label",{for:id}, desc ? el("strong",{style:"font-family:var(--mono);"},code) : code, desc ? " – "+desc : "")));
   });
   wrap.appendChild(grid);
   const otherBox = el("div",{id:prefix+"_other_wrap", style:"display:none;margin-top:10px;"}, field("Other lighting type – describe", textInput(prefix+"_other_txt")));
@@ -3863,11 +3864,7 @@ TABS.forEach((t,i)=>{
   tabsEl.appendChild(btn);
   panelsEl.appendChild(panelBuilders[t.id]());
 });
-{
-  const tbBtn = el("button",{class:"tab-btn tab-toolbox", type:"button", title:"Calculators and reference data for modelling"}, "🧰 Toolbox");
-  tbBtn.onclick = ()=> openToolbox();
-  tabsEl.appendChild(tbBtn);
-}
+
 function switchTab(id){
   document.querySelectorAll(".tab-btn").forEach(b=> b.classList.toggle("active", b.dataset.tab===id));
   document.querySelectorAll(".panel").forEach(p=> p.classList.toggle("active", p.id==="panel-"+id));
