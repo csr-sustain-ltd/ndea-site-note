@@ -9,7 +9,7 @@
 
 <!-- Build stamp. INCREMENT THIS ON EVERY DEPLOYMENT (YYYY-MM-DD-NN).
      The freshness check below reads it, so it lives in exactly one place. -->
-<meta name="build-version" content="2026-10-01-08">
+<meta name="build-version" content="2026-10-01-09">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -325,7 +325,11 @@ body{
 .guide-photo a{display:flex;align-items:center;justify-content:center;width:100%;height:100%;}
 .guide-photo img{display:block;width:100%;height:100%;object-fit:contain;cursor:zoom-in;}
 .guide-photo:not(.loaded) img{position:absolute;opacity:0;}
-.guide-nav{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;border:none;background:rgba(15,23,42,.55);color:#fff;font-size:28px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding-bottom:3px;}
+.guide-stage{position:relative;}
+.guide-stage.pair{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.guide-stage.pair .guide-photo{max-height:calc(92vh - 300px);}
+@media(max-width:700px){.guide-stage.pair{grid-template-columns:1fr;}}
+.guide-nav{position:absolute;z-index:2;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;border:none;background:rgba(15,23,42,.55);color:#fff;font-size:28px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding-bottom:3px;}
 .guide-nav:hover{background:rgba(15,23,42,.8);}
 .guide-nav.prev{left:10px;} .guide-nav.next{right:10px;}
 @media(max-width:560px){
@@ -2432,18 +2436,20 @@ function openGuide(catId){
     const cat = GUIDE_CATS.find(c=>c.id===guideState.cat) || GUIDE_CATS[0];
     view.innerHTML = "";
     if(cat.lighting){
-      view.appendChild(el("p",{class:"guide-intro"},"Tap a lamp type to see its reference photos and identification tips, then use the arrows to move through all lamp types."));
+      view.appendChild(el("p",{class:"guide-intro"},"Tap a lamp type to see its two reference photos and identification tips, then use the arrows to move between lamp types."));
       const grid = el("div",{class:"guide-grid"});
-      // every lamp photo in one sequence: T photo 1, T photo 2, CFL photo 1 ...
+      // one step per lamp type, showing both of its photos together
       const items = [];
       LAMP_TYPES.filter(([c])=> LAMP_PHOTOS[c]).forEach(([code,desc])=>{
-        const info = LAMP_PHOTOS[code], first = items.length;
+        const info = LAMP_PHOTOS[code], idx = items.length;
+        const photos = [];
         for(let n=1; n<=LAMP_PHOTO_COUNT; n++){
           const base = LAMP_PHOTO_DIR + info.folder + "/" + n;
-          items.push({title:code+" – "+desc, tag:"Photo "+n+" of "+LAMP_PHOTO_COUNT, srcs:LAMP_PHOTO_EXTS.map(e=> base+"."+e), tips:info.tips, missing:base+".jpg"});
+          photos.push({srcs:LAMP_PHOTO_EXTS.map(e=> base+"."+e), missing:base+".jpg", alt:desc+" – photo "+n});
         }
+        items.push({title:code+" – "+desc, photos, tips:info.tips});
         const t = el("button",{type:"button", class:"guide-tile"}, el("span",{class:"guide-tile-tag"},code), el("span",{class:"guide-tile-name"},desc));
-        t.addEventListener("click", ()=>{ viewer = {items, idx:first, cat}; renderViewer(); });
+        t.addEventListener("click", ()=>{ viewer = {items, idx, cat}; renderViewer(); });
         grid.appendChild(t);
       });
       view.appendChild(grid);
@@ -2506,36 +2512,44 @@ function openGuide(catId){
     back.addEventListener("click", ()=>{ viewer = null; renderGrid(); });
     view.appendChild(el("div",{class:"guide-vhead"}, back, el("span",{class:"guide-count"}, (idx+1)+" of "+items.length)));
     view.appendChild(el("h4",{class:"guide-vtitle"}, it.title, it.tag ? el("span",{class:"guide-vtag"}, it.tag) : null));
-    const frame = el("div",{class:"guide-photo"});
-    const msg = el("div",{class:"lamp-photo-msg"},"Loading photo…");
-    const img = el("img",{alt:it.title, decoding:"async"});
-    const link = el("a",{target:"_blank", rel:"noopener", title:"Open full size"}, img);
-    let k = 0;
-    img.addEventListener("load", ()=>{ msg.remove(); frame.classList.add("loaded"); link.href = img.src; });
-    img.addEventListener("error", ()=>{
-      k++;
-      if(k < it.srcs.length){ img.src = it.srcs[k]; return; }     // try the next file type
-      img.remove();
-      msg.innerHTML = "Photo not available yet.<br><span>"+escapeHtml(decodeURIComponent(it.missing || it.srcs[0]))+"</span>";
-    });
-    frame.appendChild(msg); frame.appendChild(link);
-    img.src = it.srcs[0];
+    // one photo frame; tries each file type in turn
+    const makeFrame = (p)=>{
+      const frame = el("div",{class:"guide-photo"});
+      const msg = el("div",{class:"lamp-photo-msg"},"Loading photo…");
+      const img = el("img",{alt:p.alt||it.title, decoding:"async"});
+      const link = el("a",{target:"_blank", rel:"noopener", title:"Open full size"}, img);
+      let k = 0;
+      img.addEventListener("load", ()=>{ msg.remove(); frame.classList.add("loaded"); link.href = img.src; });
+      img.addEventListener("error", ()=>{
+        k++;
+        if(k < p.srcs.length){ img.src = p.srcs[k]; return; }
+        img.remove();
+        msg.innerHTML = "Photo not available yet.<br><span>"+escapeHtml(decodeURIComponent(p.missing || p.srcs[0]))+"</span>";
+      });
+      frame.appendChild(msg); frame.appendChild(link);
+      img.src = p.srcs[0];
+      return frame;
+    };
+    const photos = it.photos || [{srcs:it.srcs, missing:it.missing, alt:it.title}];
+    const stage = el("div",{class:"guide-stage"+(photos.length>1?" pair":"")});
+    photos.forEach(p=> stage.appendChild(makeFrame(p)));
     if(items.length > 1){
-      const prev = el("button",{type:"button", class:"guide-nav prev", "aria-label":"Previous photo"},"‹");
-      const next = el("button",{type:"button", class:"guide-nav next", "aria-label":"Next photo"},"›");
+      const prev = el("button",{type:"button", class:"guide-nav prev", "aria-label":"Previous"},"‹");
+      const next = el("button",{type:"button", class:"guide-nav next", "aria-label":"Next"},"›");
       prev.addEventListener("click", ()=> step(-1));
       next.addEventListener("click", ()=> step(1));
-      frame.appendChild(prev); frame.appendChild(next);
+      stage.appendChild(prev); stage.appendChild(next);
       // swipe on phones
       let x0 = null;
-      frame.addEventListener("touchstart", e=>{ x0 = e.touches[0].clientX; }, {passive:true});
-      frame.addEventListener("touchend", e=>{ if(x0===null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null; if(Math.abs(dx) > 50) step(dx < 0 ? 1 : -1); });
-      // warm the cache for the next photo
-      const pre = new Image(); pre.src = items[(idx+1)%items.length].srcs[0];
+      stage.addEventListener("touchstart", e=>{ x0 = e.touches[0].clientX; }, {passive:true});
+      stage.addEventListener("touchend", e=>{ if(x0===null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null; if(Math.abs(dx) > 50) step(dx < 0 ? 1 : -1); });
+      // warm the cache for the next step
+      const nx = items[(idx+1)%items.length];
+      (nx.photos || [nx]).forEach(p=>{ const pre = new Image(); pre.src = p.srcs[0]; });
     }
-    view.appendChild(frame);
+    view.appendChild(stage);
     if(it.tips) view.appendChild(el("p",{class:"lamp-tips guide-tips"}, el("strong",{},"How to recognise it: "), it.tips));
-    view.appendChild(el("div",{class:"lamp-hint"}, items.length>1 ? "Use the arrows (or swipe, or the ← → keys) to move between photos. Tap the photo to open it full size." : "Tap the photo to open it full size."));
+    view.appendChild(el("div",{class:"lamp-hint"}, (items.length>1 ? "Use the arrows (or swipe, or the ← → keys) to move "+(it.photos?"between lamp types":"between photos")+". " : "")+"Tap a photo to open it full size."));
   }
 
   drawTabs();
