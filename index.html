@@ -9,7 +9,7 @@
 
 <!-- Build stamp. INCREMENT THIS ON EVERY DEPLOYMENT (YYYY-MM-DD-NN).
      The freshness check below reads it, so it lives in exactly one place. -->
-<meta name="build-version" content="2026-10-01-06">
+<meta name="build-version" content="2026-10-01-07">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -2081,7 +2081,9 @@ function buildFabricPanel(){
     [{key:"name",label:"Glazing Name",type:"select",other:true,options:["G1","G2","G3","Rooflight","Display Window","Secondary Glazing","Block Glazing"]},
      {key:"frame",label:"Frame",type:"select",options:["Aluminium","uPVC","Wood","Metal","No Frame","Other"]},
      {key:"coating",label:"Coating",type:"select",options:["Clear","Low-e","Tinted","Reflective"]},
-     {key:"units",label:"Units",type:"select",options:GLAZING_UNITS}], "Add glazing type");
+     {key:"units",label:"Units",type:"select",options:GLAZING_UNITS},
+     {key:"shading",label:"Shading?",type:"select",options:["Yes","No"]},
+     {key:"shadingnote",label:"Shading Notes",showIf:{key:"shading",value:"Yes"}}], "Add glazing type");
   panel.appendChild(section("Glazing","3.03 · 3.07 · 3.09 · 3.11 · 3.12 · 4.02", fabricTables.glazing));
 
   fabricTables.doors = makeRowTable("doors",
@@ -4270,7 +4272,7 @@ function collectReport(){
   sub(s3,"Floor Construction","3.07");
   table(s3,[{key:"name",label:"Floor",w:2.4},{key:"type",label:"Construction Type",w:2},{key:"insulation",label:"Insulation",w:1.8},{key:"notes",label:"Notes",w:3.8}], readRowTable(fabricTables.floors));
   sub(s3,"Glazing","3.03 · 3.07 · 3.09 · 3.11 · 3.12 · 4.02");
-  table(s3,[{key:"name",label:"Name",w:1.8},{key:"frame",label:"Frame",w:1.8},{key:"coating",label:"Coating",w:1.5},{key:"units",label:"Units",w:4.9}], readRowTable(fabricTables.glazing));
+  table(s3,[{key:"name",label:"Name",w:1.5},{key:"frame",label:"Frame",w:1.3},{key:"coating",label:"Coating",w:1.2},{key:"units",label:"Units",w:3.2},{key:"shading",label:"Shading",w:1.1},{key:"shadingnote",label:"Shading Notes",w:2.7}], readRowTable(fabricTables.glazing));
   sub(s3,"Doors","3.07");
   table(s3,[{key:"name",label:"Door",w:2.6},{key:"type",label:"Construction Age",w:3.6},{key:"notes",label:"Notes",w:3.8}], readRowTable(fabricTables.doors));
 
