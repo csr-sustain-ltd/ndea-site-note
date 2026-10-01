@@ -9,7 +9,7 @@
 
 <!-- Build stamp. INCREMENT THIS ON EVERY DEPLOYMENT (YYYY-MM-DD-NN).
      The freshness check below reads it, so it lives in exactly one place. -->
-<meta name="build-version" content="2026-10-01-07">
+<meta name="build-version" content="2026-10-01-08">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -317,7 +317,9 @@ body{
 .guide-vhead{display:flex;justify-content:space-between;align-items:center;gap:10px;}
 .guide-back{font:inherit;font-size:13px;font-weight:600;color:var(--primary-color);background:none;border:none;padding:4px 0;cursor:pointer;}
 .guide-back:hover{text-decoration:underline;}
-.guide-vtitle{margin:6px 0 10px;font-size:17px;color:var(--text-color);}
+.guide-vtitle{margin:6px 0 10px;font-size:17px;color:var(--text-color);display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.guide-vtag{font-size:12px;font-weight:600;color:var(--primary-color);background:var(--primary-soft);border-radius:999px;padding:3px 10px;}
+.guide-tips{margin:12px 0 4px !important;}
 /* photos are 1376 × 768; the frame has the same shape so nothing is cropped */
 .guide-photo{position:relative;width:100%;aspect-ratio:1376/768;max-height:calc(92vh - 250px);margin:0 auto;background:#F1F5F9;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;}
 .guide-photo a{display:flex;align-items:center;justify-content:center;width:100%;height:100%;}
@@ -2430,11 +2432,18 @@ function openGuide(catId){
     const cat = GUIDE_CATS.find(c=>c.id===guideState.cat) || GUIDE_CATS[0];
     view.innerHTML = "";
     if(cat.lighting){
-      view.appendChild(el("p",{class:"guide-intro"},"Tap a lamp type to see two reference photos and identification tips."));
+      view.appendChild(el("p",{class:"guide-intro"},"Tap a lamp type to see its reference photos and identification tips, then use the arrows to move through all lamp types."));
       const grid = el("div",{class:"guide-grid"});
+      // every lamp photo in one sequence: T photo 1, T photo 2, CFL photo 1 ...
+      const items = [];
       LAMP_TYPES.filter(([c])=> LAMP_PHOTOS[c]).forEach(([code,desc])=>{
+        const info = LAMP_PHOTOS[code], first = items.length;
+        for(let n=1; n<=LAMP_PHOTO_COUNT; n++){
+          const base = LAMP_PHOTO_DIR + info.folder + "/" + n;
+          items.push({title:code+" – "+desc, tag:"Photo "+n+" of "+LAMP_PHOTO_COUNT, srcs:LAMP_PHOTO_EXTS.map(e=> base+"."+e), tips:info.tips, missing:base+".jpg"});
+        }
         const t = el("button",{type:"button", class:"guide-tile"}, el("span",{class:"guide-tile-tag"},code), el("span",{class:"guide-tile-name"},desc));
-        t.addEventListener("click", ()=> showLampPhoto(code, desc));
+        t.addEventListener("click", ()=>{ viewer = {items, idx:first, cat}; renderViewer(); });
         grid.appendChild(t);
       });
       view.appendChild(grid);
@@ -2469,7 +2478,7 @@ function openGuide(catId){
     files.forEach((f,i)=>{
       const t = el("button",{type:"button", class:"guide-tile", "data-name":guideLabel(f).toLowerCase()},
         el("span",{class:"guide-tile-name"}, guideLabel(f)), el("span",{class:"guide-tile-view","aria-hidden":"true"},"View ›"));
-      t.addEventListener("click", ()=>{ viewer = {files, idx:i, base, cat}; renderViewer(); });
+      t.addEventListener("click", ()=>{ viewer = {items: files.map(f=>({title:guideLabel(f), srcs:[base+encodeURIComponent(f)]})), idx:i, cat}; renderViewer(); });
       grid.appendChild(t);
     });
     view.appendChild(grid);
@@ -2486,26 +2495,32 @@ function openGuide(catId){
 
   function step(d){
     if(!viewer) return;
-    viewer.idx = (viewer.idx + d + viewer.files.length) % viewer.files.length;
+    viewer.idx = (viewer.idx + d + viewer.items.length) % viewer.items.length;
     renderViewer();
   }
   function renderViewer(){
-    const {files, idx, base, cat} = viewer;
-    const name = files[idx], src = base + encodeURIComponent(name);
+    const {items, idx, cat} = viewer;
+    const it = items[idx];
     view.innerHTML = "";
     const back = el("button",{type:"button", class:"guide-back"},"‹ All "+cat.label.toLowerCase());
     back.addEventListener("click", ()=>{ viewer = null; renderGrid(); });
-    view.appendChild(el("div",{class:"guide-vhead"}, back, el("span",{class:"guide-count"}, (idx+1)+" of "+files.length)));
-    view.appendChild(el("h4",{class:"guide-vtitle"}, guideLabel(name)));
+    view.appendChild(el("div",{class:"guide-vhead"}, back, el("span",{class:"guide-count"}, (idx+1)+" of "+items.length)));
+    view.appendChild(el("h4",{class:"guide-vtitle"}, it.title, it.tag ? el("span",{class:"guide-vtag"}, it.tag) : null));
     const frame = el("div",{class:"guide-photo"});
     const msg = el("div",{class:"lamp-photo-msg"},"Loading photo…");
-    const img = el("img",{alt:guideLabel(name), decoding:"async"});
-    img.addEventListener("load", ()=>{ msg.remove(); frame.classList.add("loaded"); });
-    img.addEventListener("error", ()=>{ img.remove(); msg.innerHTML = "This photo couldn't be loaded.<br><span>"+escapeHtml(decodeURIComponent(src))+"</span>"; });
-    const link = el("a",{href:src, target:"_blank", rel:"noopener", title:"Open full size"}, img);
+    const img = el("img",{alt:it.title, decoding:"async"});
+    const link = el("a",{target:"_blank", rel:"noopener", title:"Open full size"}, img);
+    let k = 0;
+    img.addEventListener("load", ()=>{ msg.remove(); frame.classList.add("loaded"); link.href = img.src; });
+    img.addEventListener("error", ()=>{
+      k++;
+      if(k < it.srcs.length){ img.src = it.srcs[k]; return; }     // try the next file type
+      img.remove();
+      msg.innerHTML = "Photo not available yet.<br><span>"+escapeHtml(decodeURIComponent(it.missing || it.srcs[0]))+"</span>";
+    });
     frame.appendChild(msg); frame.appendChild(link);
-    img.src = src;
-    if(files.length > 1){
+    img.src = it.srcs[0];
+    if(items.length > 1){
       const prev = el("button",{type:"button", class:"guide-nav prev", "aria-label":"Previous photo"},"‹");
       const next = el("button",{type:"button", class:"guide-nav next", "aria-label":"Next photo"},"›");
       prev.addEventListener("click", ()=> step(-1));
@@ -2516,10 +2531,11 @@ function openGuide(catId){
       frame.addEventListener("touchstart", e=>{ x0 = e.touches[0].clientX; }, {passive:true});
       frame.addEventListener("touchend", e=>{ if(x0===null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null; if(Math.abs(dx) > 50) step(dx < 0 ? 1 : -1); });
       // warm the cache for the next photo
-      const pre = new Image(); pre.src = base + encodeURIComponent(files[(idx+1)%files.length]);
+      const pre = new Image(); pre.src = items[(idx+1)%items.length].srcs[0];
     }
     view.appendChild(frame);
-    view.appendChild(el("div",{class:"lamp-hint"}, files.length>1 ? "Use the arrows (or swipe) to move between photos. Tap the photo to open it full size." : "Tap the photo to open it full size."));
+    if(it.tips) view.appendChild(el("p",{class:"lamp-tips guide-tips"}, el("strong",{},"How to recognise it: "), it.tips));
+    view.appendChild(el("div",{class:"lamp-hint"}, items.length>1 ? "Use the arrows (or swipe, or the ← → keys) to move between photos. Tap the photo to open it full size." : "Tap the photo to open it full size."));
   }
 
   drawTabs();
