@@ -9,7 +9,7 @@
 
 <!-- Build stamp. INCREMENT THIS ON EVERY DEPLOYMENT (YYYY-MM-DD-NN).
      The freshness check below reads it, so it lives in exactly one place. -->
-<meta name="build-version" content="2026-10-01-01">
+<meta name="build-version" content="2026-10-01-02">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -336,6 +336,16 @@ body{
 }
 
 /* EPC band badge + "This survey" panel */
+/* optional-section switch */
+.opt-switch{display:flex;align-items:center;gap:14px;cursor:pointer;user-select:none;}
+.opt-switch-input{position:absolute;opacity:0;width:1px;height:1px;}
+.opt-switch-track{flex:0 0 auto;position:relative;width:46px;height:26px;border-radius:999px;background:#CBD5E1;transition:background .2s;}
+.opt-switch-track::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s;}
+.opt-switch-input:checked + .opt-switch-track{background:var(--primary-color);}
+.opt-switch-input:checked + .opt-switch-track::after{transform:translateX(20px);}
+.opt-switch-input:focus-visible + .opt-switch-track{outline:2px solid var(--primary-color);outline-offset:2px;}
+.opt-switch-text{display:flex;flex-direction:column;gap:2px;font-size:14px;color:var(--text-color);}
+.opt-switch-text span{font-size:12px;color:var(--muted);}
 .calc-box{display:flex;align-items:center;min-height:42px;padding:0 14px;border-radius:8px;background:#F1F5F9;border:1px dashed var(--border-color);color:var(--muted);font-size:14px;}
 .calc-box.set{background:var(--primary-soft);border:1px solid #BFDAD4;color:var(--primary-color);font-weight:700;font-size:16px;}
 .epc-band-badge{display:inline-flex;align-items:center;justify-content:center;min-width:54px;height:40px;padding:0 14px;border-radius:8px;font-weight:700;font-size:18px;background:#F1F5F9;color:var(--muted);border:1px dashed var(--border-color);}
@@ -856,7 +866,6 @@ input.epc-masked{color:transparent !important;text-shadow:0 0 9px rgba(30,41,59,
     <div class="header-text">
       <h1>EPC Data Collection &mdash; Site Note</h1>
       <p class="sub">L3 &amp; L4 Non-Domestic Energy Assessment</p>
-      <button type="button" class="guide-hdr-btn" onclick="openGuide()">📷 Photo Reference Guide</button>
     </div>
     <!-- Reverse logo embedded directly in the page. No second file, no path
          or case-sensitivity issues, nothing to 404. -->
@@ -1143,9 +1152,16 @@ function epcSetStatus(msg, kind){
   s.className = "epc-status "+(kind||"");
 }
 
+function epcEnabled(){ return checked("epc_enabled"); }
+function syncEpcEnabled(){
+  const b = document.getElementById("epc_body");
+  if(b) b.style.display = epcEnabled() ? "" : "none";
+}
+
 /* ---------- lookup ---------- */
 let epcDebounce = null;
 function epcOnPostcodeInput(raw){
+  if(!epcEnabled()) return;           // only look up when the optional check is switched on
   const pc = String(raw||"").trim().toUpperCase().replace(/\s+/g," ");
   clearTimeout(epcDebounce);
   if(!EPC_POSTCODE_RE.test(pc)) return;
@@ -1521,7 +1537,23 @@ function buildEpcSection(){
   body.appendChild(rw);
 
   setTimeout(epcRefresh,0);
-  return section("Previous EPC Check", "", body);
+
+  // Optional: hidden (and left out of the site note) until switched on
+  const outer = el("div");
+  const tog = el("input",{type:"checkbox", id:"epc_enabled", class:"opt-switch-input"});
+  outer.appendChild(el("label",{class:"opt-switch", for:"epc_enabled"},
+    tog, el("span",{class:"opt-switch-track","aria-hidden":"true"}),
+    el("span",{class:"opt-switch-text"}, el("strong",{},"Include a Previous EPC Check"),
+      el("span",{}, "Optional. When switched on, this check is shown here and included in the site note."))));
+  body.id = "epc_body";
+  body.style.display = "none";
+  body.style.marginTop = "18px";
+  outer.appendChild(body);
+  tog.addEventListener("change", ()=>{
+    syncEpcEnabled();
+    if(tog.checked){ const pc = val("p_postcode"); if(pc) epcOnPostcodeInput(pc); }
+  });
+  return section("Previous EPC Check (optional)", "", outer);
 }
 
 /* one delegated listener keeps the comparison live as any field changes */
@@ -2113,7 +2145,7 @@ const GUIDE_CATS = [
 const GUIDE_SECTION_MAP = {
   "Wall Construction":"Wall", "Roof Construction":"Roof", "Floor Construction":"Floor",
   "Glazing":"Window", "Doors":"Door", "Schedule of Heating & Cooling Systems":"HVAC",
-  "Domestic Hot Water":"DHW", "Lighting Type Reference Codes":"Lighting"
+  "Domestic Hot Water":"DHW", "General Lighting Types Identified":"Lighting"
 };
 
 function guideRepo(){
@@ -2324,26 +2356,6 @@ function lampsTicked(prefix){
 function buildLightingPanel(){
   const panel = el("div",{id:"panel-lighting", class:"panel"});
 
-  const legend = [
-    ["T","Tungsten"],["CFL","Compact fluorescent"],["MH","Metal halide"],
-    ["T12","T12 fluorescent, halo, low-freq"],["T8","T8 fluorescent, halo, low-freq"],
-    ["T8 HF","T8 fluorescent, halo, high-freq"],["T8 HF Tri-ph.","T8 fluorescent, tri-phosphor, high-freq"],
-    ["T5","T5 fluorescent, tri-phosphor, high-freq"],["HPM","High-pressure mercury"],
-    ["HPS","High-pressure sodium"],["LED","Light-emitting diode"],["FL","Fluorescent, no further details"]
-  ];
-  const legBody = el("div");
-  legBody.appendChild(el("div",{class:"hint",style:"margin-bottom:10px;"},"Tap a lamp type to see a reference photo and identification tips."));
-  const legGrid = el("div",{class:"lamp-ref-grid"});
-  legend.forEach(([code,desc])=>{
-    const btn = el("button",{type:"button", class:"lamp-ref", "aria-label":"Show reference photo for "+desc},
-      el("span",{class:"lamp-ref-code"},code),
-      el("span",{class:"lamp-ref-desc"},desc),
-      el("span",{class:"lamp-ref-view","aria-hidden":"true"},"View ›"));
-    btn.addEventListener("click", ()=> showLampPhoto(code, desc));
-    legGrid.appendChild(btn);
-  });
-  legBody.appendChild(legGrid);
-  panel.appendChild(section("Lighting Type Reference Codes","7.01–7.06", legBody));
 
   panel.appendChild(section("General Lighting Types Identified","7.01–7.06", lampChecklist("lightgen")));
 
@@ -3289,7 +3301,7 @@ function collectReport(){
 
   /* 2 - Previous EPC */
   const epcIds = ["epc_prev_addr","epc_prev_uprn","epc_prev_cert","epc_prev_rating","epc_prev_date","epc_prev_area","epc_prev_type","epc_new_rating","epc_new_area","epc_reason_text"];
-  if(epcIds.some(id=>val(id).trim()!=="") || EPC_REASONS.some((_,i)=>checked("epc_reason_"+i))){
+  if(epcEnabled()){
     const s2 = S("Previous EPC Check");
     const pR = epcNum("epc_prev_rating"), nR = epcNum("epc_new_rating");
     const rs = r => r===null ? "" : epcBand(r)+" ("+r+")";
@@ -4034,6 +4046,7 @@ document.getElementById("btn-clear").addEventListener("click", ()=>{
   onAssessorChange();
   syncExtensions();
   syncAirPerm();
+  syncEpcEnabled();
   const lcOther = document.getElementById("lc_other_wrap"); if(lcOther) lcOther.style.display = "none";
   epcRefresh();
   document.getElementById("status-text").textContent = "Draft — not yet generated";
