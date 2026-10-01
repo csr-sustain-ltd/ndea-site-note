@@ -9,7 +9,7 @@
 
 <!-- Build stamp. INCREMENT THIS ON EVERY DEPLOYMENT (YYYY-MM-DD-NN).
      The freshness check below reads it, so it lives in exactly one place. -->
-<meta name="build-version" content="2026-09-30-08">
+<meta name="build-version" content="2026-10-01-01">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -282,6 +282,58 @@ body{
 .lamp-photo-msg span{font-size:12px;}
 .lamp-photo-msg code{background:#fff;border:1px solid var(--border-color);border-radius:4px;padding:1px 5px;}
 .lamp-tips{margin:14px 0 0 !important;font-size:13px !important;color:var(--graphite-700) !important;}
+
+/* ---------- Photo reference guide ---------- */
+.section-title{display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.guide-btn{font:inherit;font-size:12px;font-weight:600;color:var(--primary-color);background:#fff;border:1px solid #BFDAD4;border-radius:999px;padding:4px 11px;cursor:pointer;transition:background .15s,border-color .15s;}
+.guide-btn:hover{background:var(--primary-color);color:#fff;border-color:var(--primary-color);}
+.guide-hdr-btn{margin-top:12px;font:inherit;font-size:13px;font-weight:600;color:#fff;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.45);border-radius:999px;padding:7px 16px;cursor:pointer;transition:background .15s;}
+.guide-hdr-btn:hover{background:rgba(255,255,255,.24);}
+.guide-hdr-btn:focus-visible,.guide-btn:focus-visible{outline:2px solid var(--secondary-color);outline-offset:2px;}
+.guide-card{max-width:min(1080px,96vw);width:96vw;height:min(92vh,900px);display:flex;flex-direction:column;padding:18px 20px 16px;}
+.guide-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
+.guide-top h3{margin:0 0 4px !important;}
+.guide-kicker{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);}
+.guide-tabs{display:flex;gap:6px;overflow-x:auto;padding:10px 0 12px;border-bottom:1px solid var(--border-color);margin-bottom:14px;scrollbar-width:thin;}
+.guide-tab{flex:0 0 auto;font:inherit;font-size:13px;font-weight:600;color:var(--graphite-700);background:#F1F5F9;border:1px solid transparent;border-radius:999px;padding:7px 14px;cursor:pointer;}
+.guide-tab:hover{background:var(--primary-soft);color:var(--primary-color);}
+.guide-tab.active{background:var(--primary-color);color:#fff;}
+.guide-view{flex:1;overflow-y:auto;min-height:0;}
+.guide-intro{margin:0 0 10px !important;font-size:13px !important;color:var(--muted) !important;}
+.guide-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;flex-wrap:wrap;}
+.guide-count{font-size:12px;font-weight:600;color:var(--muted);}
+.guide-search{flex:0 1 280px;font:inherit;font-size:14px;padding:8px 12px;border:1px solid var(--border-color);border-radius:8px;}
+.guide-note{font-size:12px;color:#B45309;margin:-4px 0 10px;}
+.guide-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px;}
+.guide-tile{display:flex;align-items:center;gap:10px;text-align:left;min-height:64px;background:#fff;border:1px solid var(--border-color);border-left:4px solid var(--secondary-color);border-radius:10px;padding:10px 12px;cursor:pointer;font:inherit;color:inherit;transition:border-color .15s,background .15s,box-shadow .15s;}
+.guide-tile:hover{border-color:var(--primary-color);background:var(--primary-soft);box-shadow:0 2px 8px rgba(45,106,106,.12);}
+.guide-tile:focus-visible{outline:2px solid var(--primary-color);outline-offset:2px;}
+.guide-tile-tag{font-weight:700;font-size:12px;color:var(--primary-color);min-width:56px;}
+.guide-tile-name{flex:1;font-size:13px;font-weight:600;line-height:1.35;color:var(--text-color);}
+.guide-tile-view{font-size:11px;font-weight:600;color:var(--primary-color);white-space:nowrap;}
+.guide-msg{padding:40px 16px;text-align:center;color:var(--muted);font-size:14px;line-height:1.6;}
+.guide-msg span{font-size:12px;}
+.guide-msg code{background:#F1F5F9;border:1px solid var(--border-color);border-radius:4px;padding:1px 5px;}
+.guide-vhead{display:flex;justify-content:space-between;align-items:center;gap:10px;}
+.guide-back{font:inherit;font-size:13px;font-weight:600;color:var(--primary-color);background:none;border:none;padding:4px 0;cursor:pointer;}
+.guide-back:hover{text-decoration:underline;}
+.guide-vtitle{margin:6px 0 10px;font-size:17px;color:var(--text-color);}
+/* photos are 1376 × 768; the frame has the same shape so nothing is cropped */
+.guide-photo{position:relative;width:100%;aspect-ratio:1376/768;max-height:calc(92vh - 250px);margin:0 auto;background:#F1F5F9;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;}
+.guide-photo a{display:flex;align-items:center;justify-content:center;width:100%;height:100%;}
+.guide-photo img{display:block;width:100%;height:100%;object-fit:contain;cursor:zoom-in;}
+.guide-photo:not(.loaded) img{position:absolute;opacity:0;}
+.guide-nav{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;border:none;background:rgba(15,23,42,.55);color:#fff;font-size:28px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding-bottom:3px;}
+.guide-nav:hover{background:rgba(15,23,42,.8);}
+.guide-nav.prev{left:10px;} .guide-nav.next{right:10px;}
+@media(max-width:560px){
+  .guide-card{padding:14px 12px 12px;height:94vh;}
+  .guide-grid{grid-template-columns:1fr 1fr;}
+  .guide-tile{min-height:58px;padding:9px 10px;}
+  .guide-tile-view{display:none;}
+  .guide-photo{max-height:none;}
+  .guide-nav{width:38px;height:38px;font-size:24px;}
+}
 
 /* EPC band badge + "This survey" panel */
 .calc-box{display:flex;align-items:center;min-height:42px;padding:0 14px;border-radius:8px;background:#F1F5F9;border:1px dashed var(--border-color);color:var(--muted);font-size:14px;}
@@ -804,6 +856,7 @@ input.epc-masked{color:transparent !important;text-shadow:0 0 9px rgba(30,41,59,
     <div class="header-text">
       <h1>EPC Data Collection &mdash; Site Note</h1>
       <p class="sub">L3 &amp; L4 Non-Domestic Energy Assessment</p>
+      <button type="button" class="guide-hdr-btn" onclick="openGuide()">📷 Photo Reference Guide</button>
     </div>
     <!-- Reverse logo embedded directly in the page. No second file, no path
          or case-sensitivity issues, nothing to 404. -->
@@ -997,7 +1050,15 @@ function convChip(num, siblings){
 
 function section(title, conv, bodyEl){
   const sec = el("div",{class:"section"});
-  const head = el("div",{class:"section-head"}, el("span",{},title));
+  const head = el("div",{class:"section-head"});
+  const titleWrap = el("span",{class:"section-title"}, el("span",{},title));
+  const gcat = (typeof GUIDE_SECTION_MAP!=="undefined") && GUIDE_SECTION_MAP[title];
+  if(gcat){
+    const gb = el("button",{type:"button", class:"guide-btn", title:"Open the photo reference guide"}, "📷 Photo guide");
+    gb.addEventListener("click", ()=> openGuide(gcat));
+    titleWrap.appendChild(gb);
+  }
+  head.appendChild(titleWrap);
   if(conv){
     const {nums, note} = parseConvSpec(conv);
     const box = el("div",{class:"conv"});
@@ -2018,6 +2079,228 @@ function showLampPhoto(code, desc){
   document.addEventListener("keydown", onKey);
   document.body.appendChild(scrim);
   setTimeout(()=> x.focus(), 0);
+}
+
+/* ==========================================================================
+   PHOTO REFERENCE GUIDE
+   Reference photos live in the GitHub repo next to index.html:
+
+     images/Wall/Cavity wall.jpg
+     images/Roof/...
+     images/HVAC/Fan coil systems.jpg   (a folder named "HAVC" also works)
+
+   The form asks GitHub which files are in each folder, so new photos appear
+   automatically: just upload them, no code changes. The file name (without
+   .jpg/.png) is shown as the equipment name. Folder lists are cached in the
+   browser for 1 hour to stay within GitHub's free API allowance (empty
+   folders are not cached, so the first uploads show up straight away).
+   ========================================================================== */
+const GUIDE_REPO   = "";   // optional "owner/repo"; blank = detect automatically on GitHub Pages
+const GUIDE_BRANCH = "";   // optional branch name; blank = repo's default branch
+const GUIDE_CACHE_HOURS = 1;
+const GUIDE_IMG_EXT = /\.(jpe?g|png|webp)$/i;
+const GUIDE_CATS = [
+  {id:"Wall",     label:"Walls",             folders:["Wall","Walls"]},
+  {id:"Roof",     label:"Roofs",             folders:["Roof","Roofs"]},
+  {id:"Floor",    label:"Floors",            folders:["Floor","Floors"]},
+  {id:"Window",   label:"Windows & Glazing", folders:["Window","Windows"]},
+  {id:"Door",     label:"Doors",             folders:["Door","Doors"]},
+  {id:"HVAC",     label:"HVAC Systems",      folders:["HVAC","HAVC"]},
+  {id:"DHW",      label:"Hot Water",         folders:["DHW"]},
+  {id:"Lighting", label:"Lighting",          lighting:true}
+];
+/* Section titles that get a "Photo guide" button, and which category it opens */
+const GUIDE_SECTION_MAP = {
+  "Wall Construction":"Wall", "Roof Construction":"Roof", "Floor Construction":"Floor",
+  "Glazing":"Window", "Doors":"Door", "Schedule of Heating & Cooling Systems":"HVAC",
+  "Domestic Hot Water":"DHW", "Lighting Type Reference Codes":"Lighting"
+};
+
+function guideRepo(){
+  if(GUIDE_REPO) return GUIDE_REPO;
+  const h = location.hostname;
+  if(!/\.github\.io$/i.test(h)) return "";
+  const owner = h.split(".")[0];
+  const seg = location.pathname.split("/").filter(Boolean)[0];
+  return owner + "/" + ((seg && !/\.html?$/i.test(seg)) ? seg : h);
+}
+function guideLabel(name){ return name.replace(GUIDE_IMG_EXT,"").replace(/\s+/g," ").trim(); }
+function guideCacheGet(key){ try{ const v = JSON.parse(localStorage.getItem(key)||"null"); return v && Array.isArray(v.files) ? v : null; }catch(e){ return null; } }
+function guideCacheSet(key,v){ try{ localStorage.setItem(key, JSON.stringify(v)); }catch(e){} }
+let guideManifest;   // optional images/manifest.json fallback, loaded once
+
+async function guideList(cat){
+  const repo = guideRepo();
+  const key = "ndea-guide:"+repo+":"+cat.id;
+  const cached = guideCacheGet(key);
+  if(cached && Date.now()-cached.t < GUIDE_CACHE_HOURS*3600e3) return cached;
+
+  let apiError = "";
+  if(repo){
+    for(const folder of cat.folders){
+      try{
+        const url = `https://api.github.com/repos/${repo}/contents/images/${encodeURIComponent(folder)}` + (GUIDE_BRANCH ? "?ref="+encodeURIComponent(GUIDE_BRANCH) : "");
+        const r = await fetch(url, {headers:{Accept:"application/vnd.github+json"}});
+        if(r.status===404) continue;
+        if(!r.ok){ apiError = r.status===403 ? "GitHub's hourly limit has been reached" : "GitHub returned an error ("+r.status+")"; break; }
+        const items = await r.json();
+        const files = (Array.isArray(items)?items:[]).filter(i=> i.type==="file" && GUIDE_IMG_EXT.test(i.name)).map(i=>i.name);
+        const v = {t:Date.now(), folder, files};
+        if(files.length) guideCacheSet(key, v);
+        return v;
+      }catch(e){ apiError = "No connection to GitHub"; break; }
+    }
+    if(!apiError) return {t:Date.now(), folder:cat.folders[0], files:[]};
+  }
+  if(cached) return Object.assign({stale:true}, cached);          // use an older list rather than nothing
+  if(guideManifest===undefined){
+    try{ const r = await fetch("images/manifest.json",{cache:"no-cache"}); guideManifest = r.ok ? await r.json() : null; }catch(e){ guideManifest = null; }
+  }
+  if(guideManifest){
+    for(const folder of cat.folders){
+      if(Array.isArray(guideManifest[folder])) return {t:Date.now(), folder, files:guideManifest[folder]};
+    }
+  }
+  throw new Error(repo ? (apiError || "Folder not found") : "The photo guide lists folders through GitHub, so it works once the form is opened from GitHub Pages.");
+}
+
+let guideState = {cat:"Wall"};
+function openGuide(catId){
+  if(catId) guideState.cat = catId;
+  const scrim = el("div",{class:"modal-scrim guide-scrim", role:"dialog", "aria-modal":"true", "aria-label":"Photo reference guide"});
+  const card = el("div",{class:"modal-card guide-card"});
+  const closeBtn = el("button",{type:"button", class:"lamp-card-close", "aria-label":"Close"},"×");
+  card.appendChild(el("div",{class:"guide-top"},
+    el("div",{}, el("div",{class:"guide-kicker"},"Site reference"), el("h3",{},"Photo Reference Guide")), closeBtn));
+  const tabs = el("div",{class:"guide-tabs", role:"tablist"});
+  const view = el("div",{class:"guide-view"});
+  card.appendChild(tabs); card.appendChild(view);
+  scrim.appendChild(card);
+
+  let onKey;
+  const close = ()=>{ document.removeEventListener("keydown", onKey); scrim.remove(); };
+  closeBtn.addEventListener("click", close);
+  scrim.addEventListener("click", e=>{ if(e.target===scrim) close(); });
+
+  let viewer = null;   // {files, idx, base, cat}
+  onKey = e=>{
+    if(document.querySelector(".lamp-card")) return;     // lighting pop-up open on top
+    if(e.key==="Escape"){ if(viewer){ viewer=null; renderGrid(); } else close(); }
+    if(viewer && e.key==="ArrowRight") step(1);
+    if(viewer && e.key==="ArrowLeft") step(-1);
+  };
+  document.addEventListener("keydown", onKey);
+
+  const drawTabs = ()=>{
+    tabs.innerHTML = "";
+    GUIDE_CATS.forEach(c=>{
+      const b = el("button",{type:"button", class:"guide-tab"+(c.id===guideState.cat?" active":""), role:"tab", "aria-selected":String(c.id===guideState.cat)}, c.label);
+      b.addEventListener("click", ()=>{ guideState.cat = c.id; viewer = null; drawTabs(); renderGrid(); });
+      tabs.appendChild(b);
+    });
+    const act = tabs.querySelector(".active"); if(act && act.scrollIntoView) act.scrollIntoView({block:"nearest", inline:"center"});
+  };
+
+  async function renderGrid(){
+    const cat = GUIDE_CATS.find(c=>c.id===guideState.cat) || GUIDE_CATS[0];
+    view.innerHTML = "";
+    if(cat.lighting){
+      view.appendChild(el("p",{class:"guide-intro"},"Tap a lamp type to see two reference photos and identification tips."));
+      const grid = el("div",{class:"guide-grid"});
+      LAMP_TYPES.filter(([c])=>c!=="Other").forEach(([code,desc])=>{
+        const t = el("button",{type:"button", class:"guide-tile"}, el("span",{class:"guide-tile-tag"},code), el("span",{class:"guide-tile-name"},desc));
+        t.addEventListener("click", ()=> showLampPhoto(code, desc));
+        grid.appendChild(t);
+      });
+      view.appendChild(grid);
+      return;
+    }
+    view.appendChild(el("div",{class:"guide-msg"},"Loading photos…"));
+    let res;
+    try{ res = await guideList(cat); }
+    catch(err){
+      if(guideState.cat!==cat.id) return;
+      view.innerHTML = "";
+      view.appendChild(el("div",{class:"guide-msg"}, "Couldn't load the "+cat.label.toLowerCase()+" photos.", el("br"), el("span",{}, err.message)));
+      return;
+    }
+    if(guideState.cat!==cat.id || viewer) return;        // user moved on while loading
+    view.innerHTML = "";
+    const files = res.files.slice().sort((a,b)=> guideLabel(a).localeCompare(guideLabel(b), "en", {numeric:true, sensitivity:"base"}));
+    const base = "images/"+encodeURIComponent(res.folder)+"/";
+    if(!files.length){
+      view.appendChild(el("div",{class:"guide-msg"}, "No photos uploaded yet.", el("br"), el("span",{}, "Add images to ", el("code",{},"images/"+cat.folders[0]+"/"), " in the repo.")));
+      return;
+    }
+    const bar = el("div",{class:"guide-bar"}, el("span",{class:"guide-count"}, files.length+" photo"+(files.length===1?"":"s")));
+    let search = null;
+    if(files.length > 8){
+      search = el("input",{type:"search", class:"guide-search", placeholder:"Filter "+cat.label.toLowerCase()+"…", "aria-label":"Filter"});
+      bar.appendChild(search);
+    }
+    view.appendChild(bar);
+    if(res.stale) view.appendChild(el("div",{class:"guide-note"},"Showing a saved list – recently added photos may be missing."));
+    const grid = el("div",{class:"guide-grid"});
+    files.forEach((f,i)=>{
+      const t = el("button",{type:"button", class:"guide-tile", "data-name":guideLabel(f).toLowerCase()},
+        el("span",{class:"guide-tile-name"}, guideLabel(f)), el("span",{class:"guide-tile-view","aria-hidden":"true"},"View ›"));
+      t.addEventListener("click", ()=>{ viewer = {files, idx:i, base, cat}; renderViewer(); });
+      grid.appendChild(t);
+    });
+    view.appendChild(grid);
+    if(search){
+      const empty = el("div",{class:"guide-msg", style:"display:none;"},"Nothing matches that filter.");
+      view.appendChild(empty);
+      search.addEventListener("input", ()=>{
+        const q = search.value.trim().toLowerCase(); let shown = 0;
+        grid.querySelectorAll(".guide-tile").forEach(t=>{ const on = !q || t.dataset.name.includes(q); t.style.display = on ? "" : "none"; if(on) shown++; });
+        empty.style.display = shown ? "none" : "";
+      });
+    }
+  }
+
+  function step(d){
+    if(!viewer) return;
+    viewer.idx = (viewer.idx + d + viewer.files.length) % viewer.files.length;
+    renderViewer();
+  }
+  function renderViewer(){
+    const {files, idx, base, cat} = viewer;
+    const name = files[idx], src = base + encodeURIComponent(name);
+    view.innerHTML = "";
+    const back = el("button",{type:"button", class:"guide-back"},"‹ All "+cat.label.toLowerCase());
+    back.addEventListener("click", ()=>{ viewer = null; renderGrid(); });
+    view.appendChild(el("div",{class:"guide-vhead"}, back, el("span",{class:"guide-count"}, (idx+1)+" of "+files.length)));
+    view.appendChild(el("h4",{class:"guide-vtitle"}, guideLabel(name)));
+    const frame = el("div",{class:"guide-photo"});
+    const msg = el("div",{class:"lamp-photo-msg"},"Loading photo…");
+    const img = el("img",{alt:guideLabel(name), decoding:"async"});
+    img.addEventListener("load", ()=>{ msg.remove(); frame.classList.add("loaded"); });
+    img.addEventListener("error", ()=>{ img.remove(); msg.innerHTML = "This photo couldn't be loaded.<br><span>"+escapeHtml(decodeURIComponent(src))+"</span>"; });
+    const link = el("a",{href:src, target:"_blank", rel:"noopener", title:"Open full size"}, img);
+    frame.appendChild(msg); frame.appendChild(link);
+    img.src = src;
+    if(files.length > 1){
+      const prev = el("button",{type:"button", class:"guide-nav prev", "aria-label":"Previous photo"},"‹");
+      const next = el("button",{type:"button", class:"guide-nav next", "aria-label":"Next photo"},"›");
+      prev.addEventListener("click", ()=> step(-1));
+      next.addEventListener("click", ()=> step(1));
+      frame.appendChild(prev); frame.appendChild(next);
+      // swipe on phones
+      let x0 = null;
+      frame.addEventListener("touchstart", e=>{ x0 = e.touches[0].clientX; }, {passive:true});
+      frame.addEventListener("touchend", e=>{ if(x0===null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null; if(Math.abs(dx) > 50) step(dx < 0 ? 1 : -1); });
+      // warm the cache for the next photo
+      const pre = new Image(); pre.src = base + encodeURIComponent(files[(idx+1)%files.length]);
+    }
+    view.appendChild(frame);
+    view.appendChild(el("div",{class:"lamp-hint"}, files.length>1 ? "Use the arrows (or swipe) to move between photos. Tap the photo to open it full size." : "Tap the photo to open it full size."));
+  }
+
+  drawTabs();
+  renderGrid();
+  document.body.appendChild(scrim);
+  setTimeout(()=> closeBtn.focus(), 0);
 }
 
 const LIGHT_CONTROLS = ["Manual switching only","Occupancy sensors","Dimming","Manual on, auto off","Time control to display lighting","Other"];
