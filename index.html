@@ -9,7 +9,7 @@
 
 <!-- Build stamp. INCREMENT THIS ON EVERY DEPLOYMENT (YYYY-MM-DD-NN).
      The freshness check below reads it, so it lives in exactly one place. -->
-<meta name="build-version" content="2026-10-06-02">
+<meta name="build-version" content="2026-10-06-03">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -499,6 +499,14 @@ select.tbx-in{font-size:15px;}
 .pcdb-label-tags span{font-size:12px;font-weight:600;background:rgba(255,255,255,.18);border-radius:999px;padding:2px 10px;}
 .pcdb-label-tags span:empty{display:none;}
 .pcdb-label-tags .cur{background:#DCFCE7;color:#14532D;}
+.pcdb-choice-hint{font-size:12.5px;opacity:.9;line-height:1.4;}
+.pcdb-choices{display:flex;flex-direction:column;gap:8px;padding:12px;max-height:52vh;overflow-y:auto;}
+.pcdb-choice{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;font:inherit;background:#fff;border:1px solid var(--border-color);border-left:4px solid var(--primary-color);border-radius:10px;padding:10px 70px 10px 12px;cursor:pointer;}
+.pcdb-choice:hover{background:var(--primary-soft);border-color:var(--primary-color);}
+.pcdb-choice-main{font-weight:700;font-size:14px;color:var(--text-color);}
+.pcdb-choice-sub{font-size:12px;color:var(--muted);}
+.pcdb-choice-eff{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-weight:800;font-size:14px;color:#14532D;background:#DCFCE7;border-radius:8px;padding:4px 8px;}
+.pcdb-back{display:block;margin:2px auto 0;font:inherit;font-size:13px;font-weight:600;color:var(--primary-color);background:none;border:none;cursor:pointer;}
 .pcdb-label-key{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 16px 2px;padding:10px 14px;background:#DCFCE7;border:2px solid #22C55E;border-radius:10px;}
 .pcdb-label-key span{font-size:12.5px;font-weight:600;color:#14532D;line-height:1.3;}
 .pcdb-label-key strong{font-size:24px;color:#14532D;white-space:nowrap;}
@@ -3472,16 +3480,38 @@ function openPcdbFinder(onPick, current){
     }
     const hits = rows.filter(r=>match(r,5));
     status.textContent = hits.length.toLocaleString("en-GB")+" boiler"+(hits.length===1?"":"s")+" match";
+    lastHits = hits;
     showLabel(sModel.value && hits.length===1 ? hits[0] : null, hits.length);
   }
-  function showLabel(r, n){
-    label.innerHTML = "";
+  let lastHits = [];
+  // several boilers still match (e.g. the same model in gas and LPG): list them so one can be picked
+  function showChoices(hits){
+    label.innerHTML = ""; label.classList.add("ready","choices");
+    label.appendChild(el("div",{class:"pcdb-label-head"},
+      el("div",{class:"pcdb-label-kicker"}, hits.length+" boilers match"),
+      el("div",{class:"pcdb-label-name"}, "Pick the right one"),
+      el("div",{class:"pcdb-choice-hint"},"They share a name but differ in fuel, type, output or years – check the data plate.")));
+    const list = el("div",{class:"pcdb-choices"});
+    hits.slice().sort((a,b)=> (a[5]-b[5]) || (a[6]-b[6]) || ((a[8]||0)-(b[8]||0)) || String(a[9]).localeCompare(String(b[9]))).forEach(r=>{
+      const years = (r[9]||"?")+"–"+(r[10]==="current"?"current":(r[10]||"?"));
+      const b = el("button",{type:"button", class:"pcdb-choice"},
+        el("span",{class:"pcdb-choice-main"}, [PCDB_FUEL[r[5]], PCDB_TYPE[r[6]], pcdbOutput(r)].filter(Boolean).join(" · ")),
+        el("span",{class:"pcdb-choice-sub"}, years + (r[11] ? " · "+r[11] : "") + " · PCDB "+r[0]),
+        r[14]!=null ? el("span",{class:"pcdb-choice-eff"}, pcdbPct(r[14])) : null);
+      b.addEventListener("click", ()=> showLabel(r, hits.length, true));
+      list.appendChild(b);
+    });
+    label.appendChild(list);
+  }
+  function showLabel(r, n, fromChoices){
+    label.innerHTML = ""; label.classList.remove("choices");
+    if(!r && sModel.value && n>1 && n<=60){ showChoices(lastHits); return; }
     if(!r){
       label.classList.remove("ready");
       label.appendChild(el("div",{class:"pcdb-label-empty"},
         el("div",{class:"pcdb-label-icon"},"🔥"),
         el("strong",{},"Technical data"),
-        el("p",{}, sModel.value && n>1 ? "Choose a model qualifier to see this boiler's data." : "Choose the brand and model (and fuel or type if you know them). The boiler's technical data will appear here.")));
+        el("p",{}, sModel.value && n>1 ? "Choose a model qualifier (or a fuel or type) to narrow it down." : "Choose the brand and model (and fuel or type if you know them). The boiler's technical data will appear here.")));
       return;
     }
     label.classList.add("ready");
@@ -3501,6 +3531,11 @@ function openPcdbFinder(onPick, current){
     const use = el("button",{type:"button", class:"pcdb-use"},"Use this boiler ✓");
     use.addEventListener("click", ()=>{ done(); onPick(r, data.meta && data.meta.revision); });
     label.appendChild(use);
+    if(fromChoices){
+      const back = el("button",{type:"button", class:"pcdb-back"},"‹ Back to the "+lastHits.length+" matches");
+      back.addEventListener("click", ()=> showChoices(lastHits));
+      label.appendChild(back);
+    }
     label.appendChild(el("a",{class:"pcdb-label-link", href:PCDB_SEARCH_PAGE, target:"_blank", rel:"noopener"},"Open the PCDB website ↗"));
   }
   [[sFuel,1],[sType,2],[sBrand,3],[sModel,4],[sQual,5]].forEach(([s,lvl])=> s.addEventListener("change", ()=> refresh(lvl)));
