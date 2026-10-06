@@ -9,11 +9,7 @@
 
 <!-- Build stamp. INCREMENT THIS ON EVERY DEPLOYMENT (YYYY-MM-DD-NN).
      The freshness check below reads it, so it lives in exactly one place. -->
-<<<<<<< HEAD
-<meta name="build-version" content="2026-10-03-01">
-=======
-<meta name="build-version" content="2026-10-01-09">
->>>>>>> d4af69dc3c9388d559b7f3d26bc5df6d0ad53cef
+<meta name="build-version" content="2026-10-06-01">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -481,31 +477,41 @@ select.tbx-in{font-size:15px;}
 .lookup-wrap input{flex:1;min-width:0;}
 .lookup-btn{flex:0 0 auto;font:inherit;font-size:12px;font-weight:700;white-space:nowrap;color:var(--primary-color);background:var(--primary-soft);border:1px solid #BFDAD4;border-radius:8px;padding:8px 10px;cursor:pointer;}
 .lookup-btn:hover{background:var(--primary-color);color:#fff;}
-.pcdb-card{max-width:min(860px,96vw);width:96vw;height:min(88vh,820px);display:flex;flex-direction:column;padding:18px 20px 14px;}
-.pcdb-filters{display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:center;margin:12px 0 8px;}
-.pcdb-q{font:inherit;font-size:16px;padding:11px 14px;border:2px solid var(--primary-color);border-radius:10px;min-width:0;}
-.pcdb-q:focus{outline:none;box-shadow:0 0 0 3px rgba(45,106,106,.2);}
-.pcdb-sel{font:inherit;font-size:14px;padding:10px;border:1px solid var(--border-color);border-radius:10px;background:#fff;}
-.pcdb-cur{font-size:13px;white-space:nowrap;display:flex;align-items:center;gap:4px;}
-.pcdb-status{font-size:13px;color:var(--muted);margin:2px 0 8px;}
-.pcdb-list{flex:1;overflow-y:auto;min-height:0;display:flex;flex-direction:column;gap:6px;}
-.pcdb-row{display:flex;align-items:center;gap:12px;border:1px solid var(--border-color);border-radius:10px;padding:10px 12px;background:#fff;}
-.pcdb-row:hover{border-color:var(--primary-color);background:var(--primary-soft);}
-.pcdb-main{flex:1;min-width:0;}
-.pcdb-name{font-weight:700;font-size:15px;}
-.pcdb-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;}
-.pcdb-meta span{font-size:12px;background:#F1F5F9;border-radius:999px;padding:2px 9px;color:#334155;}
-.pcdb-meta .pcdb-id{background:#FEF3C7;color:#92400E;font-weight:600;}
-.pcdb-mfr{font-size:12px;color:var(--muted);margin-top:3px;}
-.pcdb-use{flex:0 0 auto;font:inherit;font-size:14px;font-weight:700;color:#fff;background:var(--primary-color);border:none;border-radius:999px;padding:8px 18px;cursor:pointer;}
-.pcdb-use:hover{background:var(--primary-hover);}
-.pcdb-foot{font-size:11.5px;color:var(--muted);border-top:1px solid var(--border-color);padding-top:8px;margin-top:8px;line-height:1.5;}
+.pcdb-card{max-width:min(980px,96vw);width:96vw;max-height:94vh;display:flex;flex-direction:column;padding:18px 20px 14px;}
+.pcdb-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,380px);gap:20px;margin-top:14px;overflow-y:auto;min-height:0;}
+.pcdb-filters{display:flex;flex-direction:column;gap:10px;}
+.pcdb-fline{display:grid;grid-template-columns:130px 1fr;align-items:center;gap:12px;font-size:14px;font-weight:600;color:var(--text-color);}
+.pcdb-sel{font:inherit;font-size:15px;font-weight:400;padding:10px 12px;border:1px solid var(--border-color);border-radius:10px;background:#fff;min-width:0;width:100%;}
+.pcdb-sel:focus{outline:2px solid var(--primary-color);outline-offset:0;}
+.pcdb-sel:disabled{background:#F1F5F9;color:#94A3B8;}
+.pcdb-factions{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:4px;padding-left:142px;}
+.pcdb-status{font-size:13px;color:var(--muted);}
+.pcdb-reset{font:inherit;font-size:13px;font-weight:600;color:var(--primary-color);background:none;border:none;cursor:pointer;padding:4px 0;}
+.pcdb-label{border:2px dashed var(--border-color);border-radius:14px;padding:18px;background:#F8FAFC;align-self:start;}
+.pcdb-label.ready{border:2px solid var(--primary-color);background:#fff;box-shadow:0 6px 18px rgba(45,106,106,.12);padding:0;overflow:hidden;}
+.pcdb-label-empty{text-align:center;color:var(--muted);font-size:13px;line-height:1.5;padding:18px 6px;}
+.pcdb-label-empty strong{display:block;color:var(--text-color);font-size:15px;margin:6px 0;}
+.pcdb-label-icon{font-size:30px;}
+.pcdb-label-head{background:var(--primary-color);color:#fff;padding:14px 16px;}
+.pcdb-label-kicker{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;opacity:.85;}
+.pcdb-label-name{font-size:19px;font-weight:700;margin:2px 0 8px;line-height:1.25;}
+.pcdb-label-tags{display:flex;flex-wrap:wrap;gap:6px;}
+.pcdb-label-tags span{font-size:12px;font-weight:600;background:rgba(255,255,255,.18);border-radius:999px;padding:2px 10px;}
+.pcdb-label-tags span:empty{display:none;}
+.pcdb-label-tags .cur{background:#DCFCE7;color:#14532D;}
+.pcdb-label-dl{display:grid;grid-template-columns:auto 1fr;margin:0;padding:6px 16px;}
+.pcdb-label-dl dt,.pcdb-label-dl dd{padding:7px 0;border-bottom:1px solid #EEF2F6;font-size:13.5px;margin:0;}
+.pcdb-label-dl dt{color:var(--muted);padding-right:14px;}
+.pcdb-label-dl dd{font-weight:600;text-align:right;}
+.pcdb-label .pcdb-use{display:block;width:calc(100% - 32px);margin:10px 16px 6px;font:inherit;font-size:15px;font-weight:700;color:#fff;background:#16A34A;border:none;border-radius:10px;padding:12px;cursor:pointer;}
+.pcdb-label .pcdb-use:hover{background:#15803D;}
+.pcdb-label-link{display:block;text-align:center;font-size:12.5px;font-weight:600;color:var(--primary-color);padding:4px 0 14px;}
+.pcdb-foot{font-size:11.5px;color:var(--muted);border-top:1px solid var(--border-color);padding-top:8px;margin-top:14px;line-height:1.5;}
 .pcdb-foot a{color:var(--primary-color);font-weight:600;}
-@media(max-width:640px){
-  .pcdb-filters{grid-template-columns:1fr 1fr;}
-  .pcdb-q{grid-column:1 / -1;}
-  .pcdb-cur{grid-column:1 / -1;}
-  .pcdb-row{flex-direction:column;align-items:stretch;}
+@media(max-width:760px){
+  .pcdb-body{grid-template-columns:1fr;}
+  .pcdb-fline{grid-template-columns:1fr;gap:4px;}
+  .pcdb-factions{padding-left:0;}
 }
 
 /* EPC band badge + "This survey" panel */
@@ -1976,8 +1982,14 @@ function makeRowTable(containerId, columns, addLabel){
       if(c.lookup==="pcdb"){
         // text box + "Find boiler" button that searches the SAP PCDB
         const btn = el("button",{type:"button", class:"lookup-btn", title:"Search the SAP boiler database (PCDB)"},"🔍 Find boiler");
-        btn.addEventListener("click", ()=> openPcdbFinder(r=> pcdbFillRow(tr, c.key, r), input.value.replace(/\(PCDB \d+\)/,"").trim()));
-        td.appendChild(el("div",{class:"lookup-wrap"}, input, btn));
+        const hid = el("input",{type:"hidden"}); hid.dataset.key = c.key+"__pcdb";
+        btn.addEventListener("click", ()=>{
+          let cur = null; try{ cur = hid.value ? JSON.parse(hid.value).rec[0] : null; }catch(e){}
+          openPcdbFinder((r,rev)=> pcdbFillRow(tr, c.key, r, rev), cur);
+        });
+        // typing over a chosen boiler's name detaches it from the PCDB record
+        input.addEventListener("input", ()=>{ if(hid.value && input.value!==input.dataset.pcdbText) hid.value = ""; });
+        td.appendChild(el("div",{class:"lookup-wrap"}, input, btn, hid));
       } else {
         td.appendChild(input);
       }
@@ -3082,7 +3094,6 @@ function tbBuild(){
   tbRoot._show = show;
   tbRoot.appendChild(bar); tbRoot.appendChild(main);
   document.body.appendChild(tbRoot);
-<<<<<<< HEAD
 }
 function tbDisplay(on){
   if(!tbRoot) return;
@@ -3365,24 +3376,36 @@ function pcdbName(r){
   return [pre, brand, r[3], r[4]].filter(Boolean).join(" ").replace(/\s+/g," ").trim();
 }
 
-/* opens the finder; onPick(record) is called with the chosen boiler */
-function openPcdbFinder(onPick, startText){
+/* technical data for one PCDB record, as label rows */
+function pcdbLabelRows(r, rev){
+  const years = (r[9] || "?") + " – " + (r[10]==="current" ? "current" : (r[10] || "?"));
+  return [
+    ["PCDB number", r[0]], ["Manufacturer", r[1]], ["Brand name", r[2]], ["Model name", r[3]], ["Model qualifier", r[4] || "—"],
+    ["Fuel", PCDB_FUEL[r[5]] || String(r[5])], ["Main type", PCDB_TYPE[r[6]] || "—"], ["Output", pcdbOutput(r) || "—"],
+    ["Years manufactured", years], ["PCDB revision", rev ? String(rev) : "—"]
+  ];
+}
+
+/* Filter-style finder, like the PCDB website: Fuel → Main type → Brand → Model → Qualifier.
+   The chosen product's technical data shows as a label beside the filters. */
+function openPcdbFinder(onPick, current){
   const scrim = el("div",{class:"modal-scrim", role:"dialog", "aria-modal":"true", "aria-label":"Find a boiler"});
   const card = el("div",{class:"modal-card pcdb-card"});
   const close = el("button",{type:"button", class:"lamp-card-close", "aria-label":"Close"},"×");
   card.appendChild(el("div",{class:"guide-top"},
-    el("div",{}, el("div",{class:"guide-kicker"},"SAP Product Characteristics Database"), el("h3",{},"Find a boiler")), close));
-  const q = el("input",{type:"search", class:"pcdb-q", placeholder:"Type the make and model, e.g. Ideal Evomax 60", autocomplete:"off", value:startText||""});
-  const fuel = el("select",{class:"pcdb-sel"}, el("option",{value:""},"Any fuel"), ...Object.entries(PCDB_FUEL).map(([k,v])=> el("option",{value:k},v)));
-  const type = el("select",{class:"pcdb-sel"}, el("option",{value:""},"Any type"), ...Object.entries(PCDB_TYPE).map(([k,v])=> el("option",{value:k},v)));
-  const cur = el("label",{class:"pcdb-cur"}, el("input",{type:"checkbox"}), " Current models only");
-  card.appendChild(el("div",{class:"pcdb-filters"}, q, fuel, type, cur));
+    el("div",{}, el("div",{class:"guide-kicker"},"Product Characteristics Database (PCDB)"), el("h3",{},"Search for boilers")), close));
+  const mk = (ph)=> el("select",{class:"pcdb-sel"}, el("option",{value:""},ph));
+  const sFuel = mk("Any fuel"), sType = mk("Any type"), sBrand = mk("Select"), sModel = mk("Select"), sQual = mk("Select");
+  const line = (label, sel)=> el("label",{class:"pcdb-fline"}, el("span",{}, label), sel);
+  const reset = el("button",{type:"button", class:"pcdb-reset"},"Clear filters");
   const status = el("div",{class:"pcdb-status"},"Loading the boiler database…");
-  const list = el("div",{class:"pcdb-list"});
-  card.appendChild(status); card.appendChild(list);
+  const filters = el("div",{class:"pcdb-filters"},
+    line("Fuel", sFuel), line("Main type", sType), line("Brand name", sBrand), line("Model name", sModel), line("Model qualifier", sQual),
+    el("div",{class:"pcdb-factions"}, status, reset));
+  const label = el("div",{class:"pcdb-label"});
+  card.appendChild(el("div",{class:"pcdb-body"}, filters, label));
   card.appendChild(el("div",{class:"pcdb-foot"},
-    el("span",{class:"pcdb-src"},"Product data: SAP PCDB, © Crown copyright, used with permission. "),
-    "Efficiency figures aren't shown here – check them on the ",
+    "Product data: SAP PCDB, © Crown copyright, used with permission. Efficiency figures aren't included – check them on the ",
     el("a",{href:PCDB_SEARCH_PAGE, target:"_blank", rel:"noopener"},"PCDB website"),
     " using the PCDB number. The database covers SAP (domestic-scale) boilers, so larger commercial boilers may not be listed."));
   scrim.appendChild(card);
@@ -3392,294 +3415,102 @@ function openPcdbFinder(onPick, startText){
   scrim.addEventListener("click", e=>{ if(e.target===scrim) done(); });
   document.addEventListener("keydown", onKey);
   document.body.appendChild(scrim);
-  setTimeout(()=> q.focus(), 0);
 
-  let data = null, timer = null;
-  const render = ()=>{
-    if(!data) return;
-    const terms = q.value.toLowerCase().split(/\s+/).filter(Boolean);
-    const fv = fuel.value ? +fuel.value : null, tv = type.value ? +type.value : null, onlyCur = cur.querySelector("input").checked;
-    list.innerHTML = "";
-    if(!terms.length && fv===null && tv===null){ status.textContent = "Start typing a make or model – "+data.rows.length.toLocaleString("en-GB")+" boilers listed."; return; }
-    const hits = data.rows.filter(r=> (fv===null || r[5]===fv) && (tv===null || r[6]===tv) && (!onlyCur || r[10]==="current") && terms.every(t=> r.hay.includes(t)));
-    hits.sort((a,b)=> (a[10]==="current"?0:1)-(b[10]==="current"?0:1) || pcdbName(a).localeCompare(pcdbName(b),"en",{numeric:true}));
-    status.textContent = hits.length ? (hits.length>60 ? "Showing 60 of "+hits.length.toLocaleString("en-GB")+" matches – keep typing to narrow it down." : hits.length+" match"+(hits.length===1?"":"es")+".") : "No boilers match. Check the spelling, or try just the make or model.";
-    hits.slice(0,60).forEach(r=>{
-      const years = (r[9] ? r[9] : "?") + "–" + (r[10]==="current" ? "current" : (r[10]||"?"));
-      const use = el("button",{type:"button", class:"pcdb-use"},"Use");
-      const row = el("div",{class:"pcdb-row"},
-        el("div",{class:"pcdb-main"},
-          el("div",{class:"pcdb-name"}, pcdbName(r)),
-          el("div",{class:"pcdb-meta"},
-            el("span",{}, PCDB_FUEL[r[5]] || "Fuel "+r[5]),
-            el("span",{}, PCDB_TYPE[r[6]] || "—"),
-            pcdbOutput(r) ? el("span",{}, pcdbOutput(r)) : null,
-            el("span",{}, years),
-            el("span",{class:"pcdb-id"}, "PCDB "+r[0])),
-          r[1] && r[1].toLowerCase()!==String(r[2]).toLowerCase() ? el("div",{class:"pcdb-mfr"}, "Manufacturer: "+r[1]) : null),
-        use);
-      use.addEventListener("click", ()=>{ done(); onPick(r); });
-      list.appendChild(row);
-    });
+  let data = null;
+  const QUAL_NONE = "\u0000none";
+  const fill = (sel, values, keep, fmt)=>{
+    const ph = sel.options[0].textContent;
+    sel.innerHTML = ""; sel.appendChild(el("option",{value:""},ph));
+    values.forEach(v=> sel.appendChild(el("option",{value:String(v)}, fmt ? fmt(v) : (v===QUAL_NONE ? "(none)" : v))));
+    sel.value = values.map(String).includes(String(keep)) ? String(keep) : "";
   };
-  const later = ()=>{ clearTimeout(timer); timer = setTimeout(render, 120); };
-  q.addEventListener("input", later); [fuel,type,cur].forEach(x=> x.addEventListener("change", render));
-  pcdbLoad().then(d=>{ data = d; render(); })
-    .catch(()=>{ status.textContent = "Couldn't load the boiler database. It needs a connection the first time it's used (and the form must be opened from its GitHub Pages address)."; });
+  const uniq = (rows, fn)=> Array.from(new Set(rows.map(fn))).sort((a,b)=> String(a).localeCompare(String(b),"en",{numeric:true, sensitivity:"base"}));
+  const match = (r, upto)=>{
+    if(upto>=1 && sFuel.value && r[5]!==+sFuel.value) return false;
+    if(upto>=2 && sType.value && r[6]!==+sType.value) return false;
+    if(upto>=3 && sBrand.value && r[2]!==sBrand.value) return false;
+    if(upto>=4 && sModel.value && r[3]!==sModel.value) return false;
+    if(upto>=5 && sQual.value && (r[4]||QUAL_NONE)!==sQual.value) return false;
+    return true;
+  };
+  // rebuild the lists below the one that changed (level 0 = everything)
+  function refresh(level){
+    const rows = data.rows;
+    if(level<1) fill(sFuel, uniq(rows, r=>r[5]), sFuel.value, v=> PCDB_FUEL[v] || "Fuel "+v);
+    if(level<2) fill(sType, uniq(rows.filter(r=>match(r,1)), r=>r[6]), sType.value, v=> PCDB_TYPE[v] || "Type "+v);
+    if(level<3) fill(sBrand, uniq(rows.filter(r=>match(r,2)), r=>r[2]), sBrand.value);
+    if(level<4){ fill(sModel, sBrand.value ? uniq(rows.filter(r=>match(r,3)), r=>r[3]) : [], sModel.value); sModel.disabled = !sBrand.value; }
+    if(level<5){
+      const qs = sModel.value ? uniq(rows.filter(r=>match(r,4)), r=> r[4] || QUAL_NONE) : [];
+      fill(sQual, qs, sQual.value);
+      if(qs.length===1) sQual.value = String(qs[0]);
+      sQual.disabled = !sModel.value;
+    }
+    const hits = rows.filter(r=>match(r,5));
+    status.textContent = hits.length.toLocaleString("en-GB")+" boiler"+(hits.length===1?"":"s")+" match";
+    showLabel(sModel.value && hits.length===1 ? hits[0] : null, hits.length);
+  }
+  function showLabel(r, n){
+    label.innerHTML = "";
+    if(!r){
+      label.classList.remove("ready");
+      label.appendChild(el("div",{class:"pcdb-label-empty"},
+        el("div",{class:"pcdb-label-icon"},"🔥"),
+        el("strong",{},"Technical data"),
+        el("p",{}, sModel.value && n>1 ? "Choose a model qualifier to see this boiler's data." : "Choose the brand and model (and fuel or type if you know them). The boiler's technical data will appear here.")));
+      return;
+    }
+    label.classList.add("ready");
+    label.appendChild(el("div",{class:"pcdb-label-head"},
+      el("div",{class:"pcdb-label-kicker"},"PCDB "+r[0]),
+      el("div",{class:"pcdb-label-name"}, pcdbName(r)),
+      el("div",{class:"pcdb-label-tags"}, el("span",{}, PCDB_FUEL[r[5]] || ""), el("span",{}, PCDB_TYPE[r[6]] || ""), r[10]==="current" ? el("span",{class:"cur"},"Current model") : null)));
+    const tbl = el("dl",{class:"pcdb-label-dl"});
+    pcdbLabelRows(r, data.meta && data.meta.revision).forEach(([k,v])=>{ tbl.appendChild(el("dt",{},k)); tbl.appendChild(el("dd",{}, v)); });
+    label.appendChild(tbl);
+    const use = el("button",{type:"button", class:"pcdb-use"},"Use this boiler ✓");
+    use.addEventListener("click", ()=>{ done(); onPick(r, data.meta && data.meta.revision); });
+    label.appendChild(use);
+    label.appendChild(el("a",{class:"pcdb-label-link", href:PCDB_SEARCH_PAGE, target:"_blank", rel:"noopener"},"Check efficiencies on the PCDB website ↗"));
+  }
+  [[sFuel,1],[sType,2],[sBrand,3],[sModel,4],[sQual,5]].forEach(([s,lvl])=> s.addEventListener("change", ()=> refresh(lvl)));
+  reset.addEventListener("click", ()=>{ [sFuel,sType,sBrand,sModel,sQual].forEach(s=> s.value=""); refresh(0); });
+
+  pcdbLoad().then(d=>{
+    data = d;
+    // reopening a row that already has a boiler: start on that boiler
+    const r0 = current && d.rows.find(r=>r[0]===current);
+    if(r0){
+      refresh(0); sFuel.value = String(r0[5]); refresh(1); sType.value = String(r0[6]); refresh(2);
+      sBrand.value = r0[2]; refresh(3); sModel.value = r0[3]; refresh(4); sQual.value = r0[4] || QUAL_NONE; refresh(5);
+    } else refresh(0);
+    setTimeout(()=> (r0 ? label.querySelector(".pcdb-use") : sBrand).focus(), 0);
+  }).catch(()=>{
+    status.textContent = "Couldn't load the boiler database. It needs a connection the first time it's used, and the form must be opened from its GitHub Pages address.";
+    showLabel(null,0);
+  });
 }
 
-/* fills a HVAC / DHW row from a PCDB record */
-function pcdbFillRow(tr, key, r){
+/* fills a HVAC / DHW row from a PCDB record and keeps the record for the site note */
+function pcdbFillRow(tr, key, r, rev){
   const inp = tr.querySelector(`[data-key="${key}"]`);
-  if(inp){ inp.value = pcdbName(r)+" (PCDB "+r[0]+")"; inp.dispatchEvent(new Event("input",{bubbles:true})); }
+  const hid = tr.querySelector(`[data-key="${key}__pcdb"]`);
+  if(hid) hid.value = JSON.stringify({rec:r.slice(0,11), rev:rev||null});
+  if(inp){ inp.value = pcdbName(r)+" (PCDB "+r[0]+")"; inp.dataset.pcdbText = inp.value; inp.dispatchEvent(new Event("input",{bubbles:true})); }
   const fuelSel = tr.querySelector('[data-key="fuel"]');
   const f = PCDB_FUEL_TO_FORM[r[5]];
   if(fuelSel && f && Array.from(fuelSel.options).some(o=>o.value===f)){ fuelSel.value = f; fuelSel.dispatchEvent(new Event("change",{bubbles:true})); }
 }
-=======
-}
-function tbDisplay(on){
-  if(!tbRoot) return;
-  tbRoot.style.display = on ? "" : "none";
-  document.body.classList.toggle("tbx-open", on);
-  if(on) document.addEventListener("keydown", tbKey); else document.removeEventListener("keydown", tbKey);
-}
-/* open a tool (or the home page) and add a browser history step for it */
-function tbGo(id, replace){
-  const st = {tbx: id || "home"};
-  if(replace){ history.replaceState(st, ""); }
-  else { history.pushState(st, ""); tbDepth++; }
-  tbRoot._show(id || null);
-}
-function openToolbox(toolId){
-  if(!tbRoot) tbBuild();
-  loadJsPdf().catch(()=>{});        // fetch the PDF library early, while there's signal
-  tbDisplay(true);
-  if(!(history.state && history.state.tbx)){ history.pushState({tbx:"home"}, ""); tbDepth = 1; }
-  tbRoot._show(null);
-  if(toolId) tbGo(toolId);
-}
-function tbClose(){
-  tbDisplay(false);
-  const n = tbDepth; tbDepth = 0;
-  if(n>0) history.go(-n);
-}
-window.addEventListener("popstate", e=>{
-  if(!tbRoot) return;
-  const st = e.state;
-  if(st && st.tbx){
-    tbDepth = st.tbx==="home" ? 1 : 2;
-    tbDisplay(true);
-    tbRoot._show(st.tbx==="home" ? null : st.tbx);
-  } else {
-    tbDepth = 0;
-    tbDisplay(false);
-  }
-});
-if(history.state && history.state.tbx) history.replaceState(null, "");
-function tbKey(e){ if(e.key==="Escape" && tbRoot && !document.querySelector(".lamp-card, .guide-card")) tbClose(); }
-
-/* ---------- Which tools were used, and what they show ----------
-   A calculator counts as "used" once the assessor has typed or picked
-   something in it and it shows an answer. Only those go in the PDF. */
-function tbCtlText(ctl){
-  const stack = ctl.querySelector(".tbx-stack");
-  if(stack){
-    const inp = stack.querySelector("input"), sel = stack.querySelector("select");
-    const v = inp && inp.value.trim();
-    const from = sel && sel.value!=="" ? sel.options[sel.selectedIndex].text.replace(/\s+—\s+.*$/,"") : "";
-    return v ? v + (from ? "  (table: "+from+")" : "") : "";
-  }
-  const parts = [];
-  ctl.querySelectorAll("input, select, output, .tbx-fixed, .tbx-x").forEach(n=>{
-    if(n.classList.contains("tbx-x")){ parts.push("×"); return; }
-    let v = n.tagName==="SELECT" ? (n.value!=="" ? n.options[n.selectedIndex].text : "") : (n.tagName==="INPUT" ? n.value : n.textContent);
-    v = (v||"").trim();
-    parts.push(v==="—" ? "" : v);
-  });
-  let out = "", prevSep = "";
-  parts.forEach(p=>{
-    if(p==="×"){ prevSep = " × "; return; }
-    if(!p){ return; }
-    out += (out ? (prevSep || " / ") : "") + p; prevSep = "";
-  });
-  return out;
-}
-function tbScrapeCalc(c){
-  const h = c.querySelector(".tbx-calc-h");
-  const title = h ? Array.from(h.childNodes).filter(n=>n.nodeType===3).map(n=>n.textContent).join("").replace(/🧮/g,"").trim() : "";
-  const rows = [];
-  let formula = "";
-  Array.from(c.children).forEach(n=>{
-    const cl = n.classList;
-    if(cl.contains("tbx-line")){
-      const lab = n.querySelector(".tbx-lab > span"), unit = n.querySelector(".tbx-ctl > .tbx-unit");
-      const v = tbCtlText(n.querySelector(".tbx-ctl"));
-      if(v) rows.push({k:"line", label: lab ? lab.textContent.trim() : "", value:v, unit: unit ? unit.textContent.trim() : ""});
-    } else if(cl.contains("tbx-sub")){
-      rows.push({k:"sub", label:n.textContent.trim()});
-    } else if(cl.contains("tbx-panes")){
-      n.querySelectorAll(".tbx-pane").forEach(p=>{
-        const ins = p.querySelectorAll("input");
-        if(ins[0].value || ins[1].value) rows.push({k:"line", label:p.firstChild.textContent, value:(ins[0].value||"?")+" × "+(ins[1].value||"?"), unit:"m"});
-      });
-    } else if(cl.contains("tbx-checks")){
-      const on = Array.from(n.querySelectorAll("label")).filter(l=>l.querySelector("input").checked).map(l=> l.querySelector("span").textContent+" ("+l.querySelector("b").textContent+")");
-      rows.push({k:"line", label:"Credits selected", value: on.length ? on.join(", ") : "None", unit:""});
-    } else if(cl.contains("tbx-msg") && n.textContent.trim()){
-      rows.push({k:"msg", label:n.textContent.trim()});
-    } else if(cl.contains("tbx-big") && cl.contains("ok")){
-      rows.push({k:"result", label:n.querySelector(".tbx-bigl").textContent.trim(), value:n.querySelector(".tbx-bigv").textContent.trim(), unit:n.querySelector(".tbx-bigu").textContent.trim()});
-    } else if(cl.contains("tbx-formula")){
-      const f = n.cloneNode(true);
-      f.querySelectorAll("b, small").forEach(x=>x.remove());
-      f.querySelectorAll("br").forEach(x=> x.replaceWith("\n"));
-      formula = f.textContent.trim();
-    }
-  });
-  return {title, rows, formula};
-}
-function tbCollectUsed(){
-  if(!tbRoot || !tbRoot._views) return [];
+/* boilers chosen from the PCDB in a table, for the site note */
+function pcdbChosen(rows, key){
   const out = [];
-  TB_TOOLS.forEach((t,i)=>{
-    const view = tbRoot._views[t.id]; if(!view) return;
-    const calcs = Array.from(view.querySelectorAll(".tbx-calc")).filter(c=> c.dataset.touched && c.querySelector(".tbx-big.ok"));
-    if(!calcs.length) return;
-    // a formula shown below a group of calculators applies to each of them
-    const loose = Array.from(view.querySelectorAll(".tbx-formula")).filter(f=>!f.closest(".tbx-calc"));
-    out.push({tab:i+1, title:t.title, color:t.color, calcs:calcs.map(c=>{
-      const r = tbScrapeCalc(c);
-      if(!r.formula){
-        const f = loose.find(f=> c.compareDocumentPosition(f) & Node.DOCUMENT_POSITION_FOLLOWING);
-        if(f){ const x = f.cloneNode(true); x.querySelectorAll("b, small").forEach(n=>n.remove()); x.querySelectorAll("br").forEach(n=>n.replaceWith("\n")); r.formula = x.textContent.trim(); }
-      }
-      return r;
-    })});
+  rows.forEach(row=>{
+    const v = row[key+"__pcdb"];
+    if(!v) return;
+    try{ const o = JSON.parse(v); if(o && Array.isArray(o.rec)) out.push(o); }catch(e){}
   });
   return out;
 }
-function tbResetAll(){
-  if(!tbRoot) return;
-  if(tbRoot.style.display!=="none") tbClose();
-  tbRoot.remove(); tbRoot = null;
-}
-
-/* ---------- PDF of the calculations used ---------- */
-const JSPDF_URL = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
-const JSPDF_AT_URL = "https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js";
-let jspdfPromise = null;
-function tbLoadScript(src){
-  return new Promise((res,rej)=>{ const s = document.createElement("script"); s.src = src; s.async = true; s.onload = res; s.onerror = ()=> rej(new Error("Could not load "+src)); document.head.appendChild(s); });
-}
-function loadJsPdf(){
-  if(window.jspdf && window.jspdf.jsPDF && window.jspdf.jsPDF.API.autoTable) return Promise.resolve(window.jspdf.jsPDF);
-  if(!jspdfPromise){
-    jspdfPromise = tbLoadScript(JSPDF_URL).then(()=> tbLoadScript(JSPDF_AT_URL)).then(()=>{
-      if(!(window.jspdf && window.jspdf.jsPDF)) throw new Error("PDF library did not initialise");
-      return window.jspdf.jsPDF;
-    }).catch(e=>{ jspdfPromise = null; throw e; });
-  }
-  return jspdfPromise;
-}
-/* the built-in PDF fonts only cover Western European characters */
-function tbPdfText(s){
-  return String(s||"")
-    .replace(/η/g,"eff").replace(/\u2212/g,"-").replace(/Σ/g,"sum").replace(/≈/g,"~").replace(/→/g,"->").replace(/[✓✕⚠]/g,"")
-    .replace(/[\u{1F000}-\u{1FFFF}\u2600-\u27BF\uFE0F]/gu,"").replace(/[^\x00-\xFF\u2013\u2014\u2018\u2019\u201C\u201D\u2022\u2026\u20AC]/g,"").trim();
-}
-function tbHexRgb(h){ h = h.replace("#",""); return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)]; }
-
-async function tbBuildPdf(used, meta, J){
-  const jsPDF = J || await loadJsPdf();
-  const doc = new jsPDF({unit:"mm", format:"a4"});
-  const W = 210, M = 16, TEAL = [45,106,106], INK = [30,41,59], GREY = [100,116,139];
-  const T = tbPdfText;
-
-  // cover block
-  doc.setFillColor(...TEAL); doc.rect(0,0,W,34,"F");
-  doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(20);
-  doc.text("Supporting Calculations", M, 16);
-  doc.setFont("helvetica","normal"); doc.setFontSize(10.5);
-  doc.text("Non-Domestic Energy Assessment  •  CSR Sustain", M, 25);
-  let y = 46;
-  const metaRows = [["Site", T(meta.address || "—")+(meta.postcode ? ", "+T(meta.postcode) : "")],
-    ["Assessor", T(meta.assessor || "—")+(meta.membership ? "  ("+T(meta.membership)+")" : "")],
-    ["Date of inspection", T(meta.dateFmt || "—")], ["Generated", T(meta.generated)],
-    ["Tools used", used.map(u=> "Tab "+u.tab+" – "+T(u.title)).join("\n")]];
-  doc.autoTable({startY:y, margin:{left:M,right:M}, body:metaRows, theme:"plain",
-    styles:{font:"helvetica", fontSize:10, cellPadding:{top:1.6,bottom:1.6,left:0,right:2}, textColor:INK},
-    columnStyles:{0:{cellWidth:42, textColor:GREY}, 1:{fontStyle:"bold"}}});
-  y = doc.lastAutoTable.finalY + 8;
-
-  used.forEach(u=>{
-    const col = tbHexRgb(u.color);
-    if(y > 250){ doc.addPage(); y = 20; }
-    doc.setFillColor(...col); doc.rect(M, y, 3, 11, "F");
-    doc.setTextColor(...col); doc.setFont("helvetica","bold"); doc.setFontSize(9);
-    doc.text("TAB "+u.tab, M+6, y+4);
-    doc.setTextColor(...INK); doc.setFontSize(14);
-    doc.text(T(u.title), M+6, y+10);
-    y += 16;
-    u.calcs.forEach(c=>{
-      if(y > 255){ doc.addPage(); y = 20; }
-      doc.setFont("helvetica","bold"); doc.setFontSize(11); doc.setTextColor(...INK);
-      doc.text(T(c.title), M, y); y += 2.5;
-      const body = [];
-      c.rows.forEach(r=>{
-        if(r.k==="sub") body.push([{content:T(r.label).toUpperCase(), colSpan:3, styles:{fontStyle:"bold", fontSize:8, textColor:GREY, fillColor:[241,245,249]}}]);
-        else if(r.k==="msg") body.push([{content:T(r.label), colSpan:3, styles:{fontStyle:"italic", textColor:[180,83,9]}}]);
-        else if(r.k==="result") body.push([{content:T(r.label), styles:{fontStyle:"bold"}}, {content:T(r.value), styles:{fontStyle:"bold", fontSize:12, textColor:[20,83,45]}}, {content:T(r.unit), styles:{fontStyle:"bold"}}].map(x=>(x.styles.fillColor=[220,252,231], x)));
-        else body.push([T(r.label), T(r.value), T(r.unit)]);
-      });
-      doc.autoTable({startY:y, margin:{left:M,right:M}, head:[["Item","Value","Unit"]], body,
-        theme:"grid", headStyles:{fillColor:col, textColor:255, fontStyle:"bold"},
-        styles:{font:"helvetica", fontSize:9.5, cellPadding:2.2, lineColor:[226,232,240], lineWidth:0.2, textColor:INK, valign:"middle"},
-        columnStyles:{0:{cellWidth:88}, 1:{cellWidth:60}, 2:{cellWidth:"auto"}}});
-      y = doc.lastAutoTable.finalY + 4;
-      if(c.formula){
-        doc.setFont("helvetica","italic"); doc.setFontSize(8.5); doc.setTextColor(...GREY);
-        const lines = doc.splitTextToSize("Formula: "+T(c.formula).replace(/\n/g,"  |  "), W-2*M);
-        if(y + lines.length*4 > 282){ doc.addPage(); y = 20; }
-        doc.text(lines, M, y+2); y += lines.length*4 + 4;
-      }
-      y += 3;
-    });
-    y += 4;
-  });
-
-  const n = doc.getNumberOfPages();
-  for(let i=1;i<=n;i++){
-    doc.setPage(i);
-    doc.setDrawColor(226,232,240); doc.line(M, 286, W-M, 286);
-    doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(...GREY);
-    doc.text(T("Supporting calculations – "+(meta.address||"")), M, 291);
-    doc.text("Page "+i+" of "+n, W-M, 291, {align:"right"});
-  }
-  return doc.output("blob");
-}
-
-/* ---------- calculations in the email body ---------- */
-function tbUsedToEmailHtml(used){
-  if(!used.length) return "";
-  const E = escapeHtml, F = "font-family:Arial,Helvetica,sans-serif;";
-  let h = `<div style="${F}background:#2D6A6A;color:#fff;font-size:13px;font-weight:700;padding:7px 10px;margin:22px 0 8px;text-transform:uppercase;">Supporting calculations</div>`;
-  used.forEach(u=>{
-    h += `<div style="${F}font-size:13px;font-weight:700;color:${u.color};margin:12px 0 4px;">Tab ${u.tab} – ${E(u.title)}</div>`;
-    u.calcs.forEach(c=>{
-      h += `<table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;${F}font-size:12px;margin-bottom:8px;"><tr><th colspan="3" style="text-align:left;background:#F1F5F9;padding:5px 8px;border:1px solid #E2E8F0;">${E(c.title)}</th></tr>`;
-      c.rows.forEach(r=>{
-        if(r.k==="sub") h += `<tr><td colspan="3" style="padding:4px 8px;border:1px solid #E2E8F0;font-weight:700;color:#64748B;font-size:11px;">${E(r.label)}</td></tr>`;
-        else if(r.k==="msg") h += `<tr><td colspan="3" style="padding:4px 8px;border:1px solid #E2E8F0;color:#B45309;font-style:italic;">${E(r.label)}</td></tr>`;
-        else { const res = r.k==="result"; h += `<tr${res?' style="background:#DCFCE7;font-weight:700;"':""}><td style="padding:4px 8px;border:1px solid #E2E8F0;">${E(r.label)}</td><td style="padding:4px 8px;border:1px solid #E2E8F0;">${E(r.value)}</td><td style="padding:4px 8px;border:1px solid #E2E8F0;">${E(r.unit)}</td></tr>`; }
-      });
-      h += "</table>";
-    });
-  });
-  return h;
-}
-
->>>>>>> d4af69dc3c9388d559b7f3d26bc5df6d0ad53cef
 
 const LIGHT_CONTROLS = ["Manual switching only","Occupancy sensors","Dimming","Manual on, auto off","Time control to display lighting","Other"];
 function lampChecklist(prefix){
@@ -4709,12 +4540,22 @@ function collectReport(){
   const s4 = S("Heating & Cooling");
   sub(s4,"HVAC Systems","2.02 · 3.05 · 3.06 · 5.01 · 6.01 · 6.03 · 6.04 · 6.11 · 6.13");
   table(s4,[{key:"name",label:"Make Model",w:2.6},{key:"area",label:"Area Served",w:2},{key:"type",label:"Type",w:2.4},{key:"fuel",label:"Fuel",w:1.4},{key:"controls",label:"Controls",w:2}], readRowTable(hvacTable.systems));
+  const hvBoilers = pcdbChosen(readRowTable(hvacTable.systems), "name");
+  if(hvBoilers.length){
+    sub(s4,"Boiler Technical Data (PCDB)");
+    hvBoilers.forEach(o=> kv(s4, pcdbLabelRows(o.rec, o.rev)));
+  }
   note(s4,"HVAC justification notes",val("hv_notes"));
 
   /* 5 - DHW & ventilation */
   const s5 = S("Hot Water & Ventilation");
   sub(s5,"Domestic Hot Water","6.04 · 6.05 · 6.06 · 6.10");
   table(s5,[{key:"makemodel",label:"Make Model",w:1.9},{key:"name",label:"Area Served",w:1.4},{key:"type",label:"Type",w:1.7},{key:"fuel",label:"Fuel",w:1.3},{key:"storage",label:"Storage (L)",w:1.1},{key:"insulationtype",label:"Insulation Type",w:1.5},{key:"insulation",label:"Insul. (mm)",w:1},{key:"circulation",label:"Circ. Loop",w:1}], readRowTable(dhwTable.systems));
+  const dhwBoilers = pcdbChosen(readRowTable(dhwTable.systems), "makemodel");
+  if(dhwBoilers.length){
+    sub(s5,"Water Heater Technical Data (PCDB)");
+    dhwBoilers.forEach(o=> kv(s5, pcdbLabelRows(o.rec, o.rev)));
+  }
   note(s5,"DHW justification notes",val("dhw_notes"));
   sub(s5,"Mechanical Ventilation (AHU)","6.07 · 6.08 · 6.09 · 6.12");
   table(s5,[{key:"name",label:"AHU",w:1.5},{key:"makemodel",label:"Make Model",w:2.2},{key:"controls",label:"Controls",w:1.8},{key:"sfp",label:"SFP (W/l/s)",w:1.3},{key:"heatrecovery",label:"Heat Recovery",w:1.4},{key:"hrtype",label:"Heat Recovery Type",w:2.4}], readRowTable(dhwTable.ahu));
