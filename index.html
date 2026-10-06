@@ -9,7 +9,7 @@
 
 <!-- Build stamp. INCREMENT THIS ON EVERY DEPLOYMENT (YYYY-MM-DD-NN).
      The freshness check below reads it, so it lives in exactly one place. -->
-<meta name="build-version" content="2026-10-06-01">
+<meta name="build-version" content="2026-10-06-02">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -499,6 +499,9 @@ select.tbx-in{font-size:15px;}
 .pcdb-label-tags span{font-size:12px;font-weight:600;background:rgba(255,255,255,.18);border-radius:999px;padding:2px 10px;}
 .pcdb-label-tags span:empty{display:none;}
 .pcdb-label-tags .cur{background:#DCFCE7;color:#14532D;}
+.pcdb-label-key{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 16px 2px;padding:10px 14px;background:#DCFCE7;border:2px solid #22C55E;border-radius:10px;}
+.pcdb-label-key span{font-size:12.5px;font-weight:600;color:#14532D;line-height:1.3;}
+.pcdb-label-key strong{font-size:24px;color:#14532D;white-space:nowrap;}
 .pcdb-label-dl{display:grid;grid-template-columns:auto 1fr;margin:0;padding:6px 16px;}
 .pcdb-label-dl dt,.pcdb-label-dl dd{padding:7px 0;border-bottom:1px solid #EEF2F6;font-size:13.5px;margin:0;}
 .pcdb-label-dl dt{color:var(--muted);padding-right:14px;}
@@ -3376,14 +3379,36 @@ function pcdbName(r){
   return [pre, brand, r[3], r[4]].filter(Boolean).join(" ").replace(/\s+/g," ").trim();
 }
 
-/* technical data for one PCDB record, as label rows */
+/* Code meanings checked against the labelled PCDB web pages (records 016770, 017150, 008182).
+   Codes not confirmed there are left blank rather than guessed. */
+const PCDB_CONDENSING = {1:"No", 2:"Yes"};
+const PCDB_BURNER = {1:"On-off", 2:"Variable (stepped or modulating)"};
+const PCDB_MOUNTING = {1:"Floor", 2:"Wall"};
+const PCDB_FLUE = {2:"Room-sealed", 3:"Open or room-sealed"};
+const PCDB_CATEGORY = {2:"SEDBUK based on certified data"};
+const pcdbPct = v => (v===null || v===undefined || v==="") ? "—" : (+v).toFixed(1)+"%";
+/* technical data for one PCDB record, as label rows (same wording as the PCDB website) */
 function pcdbLabelRows(r, rev){
   const years = (r[9] || "?") + " – " + (r[10]==="current" ? "current" : (r[10] || "?"));
-  return [
+  const rows = [
     ["PCDB number", r[0]], ["Manufacturer", r[1]], ["Brand name", r[2]], ["Model name", r[3]], ["Model qualifier", r[4] || "—"],
-    ["Fuel", PCDB_FUEL[r[5]] || String(r[5])], ["Main type", PCDB_TYPE[r[6]] || "—"], ["Output", pcdbOutput(r) || "—"],
-    ["Years manufactured", years], ["PCDB revision", rev ? String(rev) : "—"]
+    ["Boiler ID", r[11] || "—"], ["Fuel", PCDB_FUEL[r[5]] || String(r[5])], ["Main type", PCDB_TYPE[r[6]] || "—"], ["Output power", pcdbOutput(r) || "—"]
   ];
+  if(r.length > 12){
+    rows.push(
+      ["Seasonal efficiency when used in non-domestic buildings", pcdbPct(r[14])],
+      ["SAP winter seasonal efficiency", pcdbPct(r[12])],
+      ["SAP summer seasonal efficiency", pcdbPct(r[13])],
+      ["Comparative hot water efficiency", pcdbPct(r[15])],
+      ["Efficiency category", PCDB_CATEGORY[r[21]] || "—"],
+      ["SAP equation used", r[20] ? String(r[20]) : "—"],
+      ["Condensing", PCDB_CONDENSING[r[16]] || "—"],
+      ["Burner control", PCDB_BURNER[r[17]] || "—"],
+      ["Mounting position", PCDB_MOUNTING[r[18]] || "—"],
+      ["Flue type", PCDB_FLUE[r[19]] || "—"]);
+  }
+  rows.push(["Years manufactured", years], ["PCDB revision", rev ? String(rev) : "—"]);
+  return rows;
 }
 
 /* Filter-style finder, like the PCDB website: Fuel → Main type → Brand → Model → Qualifier.
@@ -3405,9 +3430,8 @@ function openPcdbFinder(onPick, current){
   const label = el("div",{class:"pcdb-label"});
   card.appendChild(el("div",{class:"pcdb-body"}, filters, label));
   card.appendChild(el("div",{class:"pcdb-foot"},
-    "Product data: SAP PCDB, © Crown copyright, used with permission. Efficiency figures aren't included – check them on the ",
-    el("a",{href:PCDB_SEARCH_PAGE, target:"_blank", rel:"noopener"},"PCDB website"),
-    " using the PCDB number. The database covers SAP (domestic-scale) boilers, so larger commercial boilers may not be listed."));
+    "Product data: SAP 10 PCDB, © Crown copyright, used with permission. The database covers SAP (domestic-scale) boilers, so larger commercial boilers may not be listed – use manufacturer data for those. ",
+    el("a",{href:PCDB_SEARCH_PAGE, target:"_blank", rel:"noopener"},"PCDB website")));
   scrim.appendChild(card);
   const onKey = e=>{ if(e.key==="Escape") done(); };
   const done = ()=>{ document.removeEventListener("keydown", onKey); scrim.remove(); };
@@ -3466,12 +3490,18 @@ function openPcdbFinder(onPick, current){
       el("div",{class:"pcdb-label-name"}, pcdbName(r)),
       el("div",{class:"pcdb-label-tags"}, el("span",{}, PCDB_FUEL[r[5]] || ""), el("span",{}, PCDB_TYPE[r[6]] || ""), r[10]==="current" ? el("span",{class:"cur"},"Current model") : null)));
     const tbl = el("dl",{class:"pcdb-label-dl"});
-    pcdbLabelRows(r, data.meta && data.meta.revision).forEach(([k,v])=>{ tbl.appendChild(el("dt",{},k)); tbl.appendChild(el("dd",{}, v)); });
+    if(r[14]!==null && r[14]!==undefined)
+      label.appendChild(el("div",{class:"pcdb-label-key"},
+        el("span",{},"Seasonal efficiency when used in non-domestic buildings"), el("strong",{}, pcdbPct(r[14]))));
+    pcdbLabelRows(r, data.meta && data.meta.revision).forEach(([k,v])=>{
+      if(k==="Seasonal efficiency when used in non-domestic buildings") return;   // shown above
+      tbl.appendChild(el("dt",{},k)); tbl.appendChild(el("dd",{}, v));
+    });
     label.appendChild(tbl);
     const use = el("button",{type:"button", class:"pcdb-use"},"Use this boiler ✓");
     use.addEventListener("click", ()=>{ done(); onPick(r, data.meta && data.meta.revision); });
     label.appendChild(use);
-    label.appendChild(el("a",{class:"pcdb-label-link", href:PCDB_SEARCH_PAGE, target:"_blank", rel:"noopener"},"Check efficiencies on the PCDB website ↗"));
+    label.appendChild(el("a",{class:"pcdb-label-link", href:PCDB_SEARCH_PAGE, target:"_blank", rel:"noopener"},"Open the PCDB website ↗"));
   }
   [[sFuel,1],[sType,2],[sBrand,3],[sModel,4],[sQual,5]].forEach(([s,lvl])=> s.addEventListener("change", ()=> refresh(lvl)));
   reset.addEventListener("click", ()=>{ [sFuel,sType,sBrand,sModel,sQual].forEach(s=> s.value=""); refresh(0); });
@@ -3495,7 +3525,7 @@ function openPcdbFinder(onPick, current){
 function pcdbFillRow(tr, key, r, rev){
   const inp = tr.querySelector(`[data-key="${key}"]`);
   const hid = tr.querySelector(`[data-key="${key}__pcdb"]`);
-  if(hid) hid.value = JSON.stringify({rec:r.slice(0,11), rev:rev||null});
+  if(hid) hid.value = JSON.stringify({rec:r.slice(0,22), rev:rev||null});
   if(inp){ inp.value = pcdbName(r)+" (PCDB "+r[0]+")"; inp.dataset.pcdbText = inp.value; inp.dispatchEvent(new Event("input",{bubbles:true})); }
   const fuelSel = tr.querySelector('[data-key="fuel"]');
   const f = PCDB_FUEL_TO_FORM[r[5]];
