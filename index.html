@@ -9,7 +9,11 @@
 
 <!-- Build stamp. INCREMENT THIS ON EVERY DEPLOYMENT (YYYY-MM-DD-NN).
      The freshness check below reads it, so it lives in exactly one place. -->
+<<<<<<< HEAD
 <meta name="build-version" content="2026-10-03-01">
+=======
+<meta name="build-version" content="2026-10-01-09">
+>>>>>>> d4af69dc3c9388d559b7f3d26bc5df6d0ad53cef
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -3078,6 +3082,7 @@ function tbBuild(){
   tbRoot._show = show;
   tbRoot.appendChild(bar); tbRoot.appendChild(main);
   document.body.appendChild(tbRoot);
+<<<<<<< HEAD
 }
 function tbDisplay(on){
   if(!tbRoot) return;
@@ -3431,6 +3436,250 @@ function pcdbFillRow(tr, key, r){
   const f = PCDB_FUEL_TO_FORM[r[5]];
   if(fuelSel && f && Array.from(fuelSel.options).some(o=>o.value===f)){ fuelSel.value = f; fuelSel.dispatchEvent(new Event("change",{bubbles:true})); }
 }
+=======
+}
+function tbDisplay(on){
+  if(!tbRoot) return;
+  tbRoot.style.display = on ? "" : "none";
+  document.body.classList.toggle("tbx-open", on);
+  if(on) document.addEventListener("keydown", tbKey); else document.removeEventListener("keydown", tbKey);
+}
+/* open a tool (or the home page) and add a browser history step for it */
+function tbGo(id, replace){
+  const st = {tbx: id || "home"};
+  if(replace){ history.replaceState(st, ""); }
+  else { history.pushState(st, ""); tbDepth++; }
+  tbRoot._show(id || null);
+}
+function openToolbox(toolId){
+  if(!tbRoot) tbBuild();
+  loadJsPdf().catch(()=>{});        // fetch the PDF library early, while there's signal
+  tbDisplay(true);
+  if(!(history.state && history.state.tbx)){ history.pushState({tbx:"home"}, ""); tbDepth = 1; }
+  tbRoot._show(null);
+  if(toolId) tbGo(toolId);
+}
+function tbClose(){
+  tbDisplay(false);
+  const n = tbDepth; tbDepth = 0;
+  if(n>0) history.go(-n);
+}
+window.addEventListener("popstate", e=>{
+  if(!tbRoot) return;
+  const st = e.state;
+  if(st && st.tbx){
+    tbDepth = st.tbx==="home" ? 1 : 2;
+    tbDisplay(true);
+    tbRoot._show(st.tbx==="home" ? null : st.tbx);
+  } else {
+    tbDepth = 0;
+    tbDisplay(false);
+  }
+});
+if(history.state && history.state.tbx) history.replaceState(null, "");
+function tbKey(e){ if(e.key==="Escape" && tbRoot && !document.querySelector(".lamp-card, .guide-card")) tbClose(); }
+
+/* ---------- Which tools were used, and what they show ----------
+   A calculator counts as "used" once the assessor has typed or picked
+   something in it and it shows an answer. Only those go in the PDF. */
+function tbCtlText(ctl){
+  const stack = ctl.querySelector(".tbx-stack");
+  if(stack){
+    const inp = stack.querySelector("input"), sel = stack.querySelector("select");
+    const v = inp && inp.value.trim();
+    const from = sel && sel.value!=="" ? sel.options[sel.selectedIndex].text.replace(/\s+—\s+.*$/,"") : "";
+    return v ? v + (from ? "  (table: "+from+")" : "") : "";
+  }
+  const parts = [];
+  ctl.querySelectorAll("input, select, output, .tbx-fixed, .tbx-x").forEach(n=>{
+    if(n.classList.contains("tbx-x")){ parts.push("×"); return; }
+    let v = n.tagName==="SELECT" ? (n.value!=="" ? n.options[n.selectedIndex].text : "") : (n.tagName==="INPUT" ? n.value : n.textContent);
+    v = (v||"").trim();
+    parts.push(v==="—" ? "" : v);
+  });
+  let out = "", prevSep = "";
+  parts.forEach(p=>{
+    if(p==="×"){ prevSep = " × "; return; }
+    if(!p){ return; }
+    out += (out ? (prevSep || " / ") : "") + p; prevSep = "";
+  });
+  return out;
+}
+function tbScrapeCalc(c){
+  const h = c.querySelector(".tbx-calc-h");
+  const title = h ? Array.from(h.childNodes).filter(n=>n.nodeType===3).map(n=>n.textContent).join("").replace(/🧮/g,"").trim() : "";
+  const rows = [];
+  let formula = "";
+  Array.from(c.children).forEach(n=>{
+    const cl = n.classList;
+    if(cl.contains("tbx-line")){
+      const lab = n.querySelector(".tbx-lab > span"), unit = n.querySelector(".tbx-ctl > .tbx-unit");
+      const v = tbCtlText(n.querySelector(".tbx-ctl"));
+      if(v) rows.push({k:"line", label: lab ? lab.textContent.trim() : "", value:v, unit: unit ? unit.textContent.trim() : ""});
+    } else if(cl.contains("tbx-sub")){
+      rows.push({k:"sub", label:n.textContent.trim()});
+    } else if(cl.contains("tbx-panes")){
+      n.querySelectorAll(".tbx-pane").forEach(p=>{
+        const ins = p.querySelectorAll("input");
+        if(ins[0].value || ins[1].value) rows.push({k:"line", label:p.firstChild.textContent, value:(ins[0].value||"?")+" × "+(ins[1].value||"?"), unit:"m"});
+      });
+    } else if(cl.contains("tbx-checks")){
+      const on = Array.from(n.querySelectorAll("label")).filter(l=>l.querySelector("input").checked).map(l=> l.querySelector("span").textContent+" ("+l.querySelector("b").textContent+")");
+      rows.push({k:"line", label:"Credits selected", value: on.length ? on.join(", ") : "None", unit:""});
+    } else if(cl.contains("tbx-msg") && n.textContent.trim()){
+      rows.push({k:"msg", label:n.textContent.trim()});
+    } else if(cl.contains("tbx-big") && cl.contains("ok")){
+      rows.push({k:"result", label:n.querySelector(".tbx-bigl").textContent.trim(), value:n.querySelector(".tbx-bigv").textContent.trim(), unit:n.querySelector(".tbx-bigu").textContent.trim()});
+    } else if(cl.contains("tbx-formula")){
+      const f = n.cloneNode(true);
+      f.querySelectorAll("b, small").forEach(x=>x.remove());
+      f.querySelectorAll("br").forEach(x=> x.replaceWith("\n"));
+      formula = f.textContent.trim();
+    }
+  });
+  return {title, rows, formula};
+}
+function tbCollectUsed(){
+  if(!tbRoot || !tbRoot._views) return [];
+  const out = [];
+  TB_TOOLS.forEach((t,i)=>{
+    const view = tbRoot._views[t.id]; if(!view) return;
+    const calcs = Array.from(view.querySelectorAll(".tbx-calc")).filter(c=> c.dataset.touched && c.querySelector(".tbx-big.ok"));
+    if(!calcs.length) return;
+    // a formula shown below a group of calculators applies to each of them
+    const loose = Array.from(view.querySelectorAll(".tbx-formula")).filter(f=>!f.closest(".tbx-calc"));
+    out.push({tab:i+1, title:t.title, color:t.color, calcs:calcs.map(c=>{
+      const r = tbScrapeCalc(c);
+      if(!r.formula){
+        const f = loose.find(f=> c.compareDocumentPosition(f) & Node.DOCUMENT_POSITION_FOLLOWING);
+        if(f){ const x = f.cloneNode(true); x.querySelectorAll("b, small").forEach(n=>n.remove()); x.querySelectorAll("br").forEach(n=>n.replaceWith("\n")); r.formula = x.textContent.trim(); }
+      }
+      return r;
+    })});
+  });
+  return out;
+}
+function tbResetAll(){
+  if(!tbRoot) return;
+  if(tbRoot.style.display!=="none") tbClose();
+  tbRoot.remove(); tbRoot = null;
+}
+
+/* ---------- PDF of the calculations used ---------- */
+const JSPDF_URL = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+const JSPDF_AT_URL = "https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js";
+let jspdfPromise = null;
+function tbLoadScript(src){
+  return new Promise((res,rej)=>{ const s = document.createElement("script"); s.src = src; s.async = true; s.onload = res; s.onerror = ()=> rej(new Error("Could not load "+src)); document.head.appendChild(s); });
+}
+function loadJsPdf(){
+  if(window.jspdf && window.jspdf.jsPDF && window.jspdf.jsPDF.API.autoTable) return Promise.resolve(window.jspdf.jsPDF);
+  if(!jspdfPromise){
+    jspdfPromise = tbLoadScript(JSPDF_URL).then(()=> tbLoadScript(JSPDF_AT_URL)).then(()=>{
+      if(!(window.jspdf && window.jspdf.jsPDF)) throw new Error("PDF library did not initialise");
+      return window.jspdf.jsPDF;
+    }).catch(e=>{ jspdfPromise = null; throw e; });
+  }
+  return jspdfPromise;
+}
+/* the built-in PDF fonts only cover Western European characters */
+function tbPdfText(s){
+  return String(s||"")
+    .replace(/η/g,"eff").replace(/\u2212/g,"-").replace(/Σ/g,"sum").replace(/≈/g,"~").replace(/→/g,"->").replace(/[✓✕⚠]/g,"")
+    .replace(/[\u{1F000}-\u{1FFFF}\u2600-\u27BF\uFE0F]/gu,"").replace(/[^\x00-\xFF\u2013\u2014\u2018\u2019\u201C\u201D\u2022\u2026\u20AC]/g,"").trim();
+}
+function tbHexRgb(h){ h = h.replace("#",""); return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)]; }
+
+async function tbBuildPdf(used, meta, J){
+  const jsPDF = J || await loadJsPdf();
+  const doc = new jsPDF({unit:"mm", format:"a4"});
+  const W = 210, M = 16, TEAL = [45,106,106], INK = [30,41,59], GREY = [100,116,139];
+  const T = tbPdfText;
+
+  // cover block
+  doc.setFillColor(...TEAL); doc.rect(0,0,W,34,"F");
+  doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(20);
+  doc.text("Supporting Calculations", M, 16);
+  doc.setFont("helvetica","normal"); doc.setFontSize(10.5);
+  doc.text("Non-Domestic Energy Assessment  •  CSR Sustain", M, 25);
+  let y = 46;
+  const metaRows = [["Site", T(meta.address || "—")+(meta.postcode ? ", "+T(meta.postcode) : "")],
+    ["Assessor", T(meta.assessor || "—")+(meta.membership ? "  ("+T(meta.membership)+")" : "")],
+    ["Date of inspection", T(meta.dateFmt || "—")], ["Generated", T(meta.generated)],
+    ["Tools used", used.map(u=> "Tab "+u.tab+" – "+T(u.title)).join("\n")]];
+  doc.autoTable({startY:y, margin:{left:M,right:M}, body:metaRows, theme:"plain",
+    styles:{font:"helvetica", fontSize:10, cellPadding:{top:1.6,bottom:1.6,left:0,right:2}, textColor:INK},
+    columnStyles:{0:{cellWidth:42, textColor:GREY}, 1:{fontStyle:"bold"}}});
+  y = doc.lastAutoTable.finalY + 8;
+
+  used.forEach(u=>{
+    const col = tbHexRgb(u.color);
+    if(y > 250){ doc.addPage(); y = 20; }
+    doc.setFillColor(...col); doc.rect(M, y, 3, 11, "F");
+    doc.setTextColor(...col); doc.setFont("helvetica","bold"); doc.setFontSize(9);
+    doc.text("TAB "+u.tab, M+6, y+4);
+    doc.setTextColor(...INK); doc.setFontSize(14);
+    doc.text(T(u.title), M+6, y+10);
+    y += 16;
+    u.calcs.forEach(c=>{
+      if(y > 255){ doc.addPage(); y = 20; }
+      doc.setFont("helvetica","bold"); doc.setFontSize(11); doc.setTextColor(...INK);
+      doc.text(T(c.title), M, y); y += 2.5;
+      const body = [];
+      c.rows.forEach(r=>{
+        if(r.k==="sub") body.push([{content:T(r.label).toUpperCase(), colSpan:3, styles:{fontStyle:"bold", fontSize:8, textColor:GREY, fillColor:[241,245,249]}}]);
+        else if(r.k==="msg") body.push([{content:T(r.label), colSpan:3, styles:{fontStyle:"italic", textColor:[180,83,9]}}]);
+        else if(r.k==="result") body.push([{content:T(r.label), styles:{fontStyle:"bold"}}, {content:T(r.value), styles:{fontStyle:"bold", fontSize:12, textColor:[20,83,45]}}, {content:T(r.unit), styles:{fontStyle:"bold"}}].map(x=>(x.styles.fillColor=[220,252,231], x)));
+        else body.push([T(r.label), T(r.value), T(r.unit)]);
+      });
+      doc.autoTable({startY:y, margin:{left:M,right:M}, head:[["Item","Value","Unit"]], body,
+        theme:"grid", headStyles:{fillColor:col, textColor:255, fontStyle:"bold"},
+        styles:{font:"helvetica", fontSize:9.5, cellPadding:2.2, lineColor:[226,232,240], lineWidth:0.2, textColor:INK, valign:"middle"},
+        columnStyles:{0:{cellWidth:88}, 1:{cellWidth:60}, 2:{cellWidth:"auto"}}});
+      y = doc.lastAutoTable.finalY + 4;
+      if(c.formula){
+        doc.setFont("helvetica","italic"); doc.setFontSize(8.5); doc.setTextColor(...GREY);
+        const lines = doc.splitTextToSize("Formula: "+T(c.formula).replace(/\n/g,"  |  "), W-2*M);
+        if(y + lines.length*4 > 282){ doc.addPage(); y = 20; }
+        doc.text(lines, M, y+2); y += lines.length*4 + 4;
+      }
+      y += 3;
+    });
+    y += 4;
+  });
+
+  const n = doc.getNumberOfPages();
+  for(let i=1;i<=n;i++){
+    doc.setPage(i);
+    doc.setDrawColor(226,232,240); doc.line(M, 286, W-M, 286);
+    doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(...GREY);
+    doc.text(T("Supporting calculations – "+(meta.address||"")), M, 291);
+    doc.text("Page "+i+" of "+n, W-M, 291, {align:"right"});
+  }
+  return doc.output("blob");
+}
+
+/* ---------- calculations in the email body ---------- */
+function tbUsedToEmailHtml(used){
+  if(!used.length) return "";
+  const E = escapeHtml, F = "font-family:Arial,Helvetica,sans-serif;";
+  let h = `<div style="${F}background:#2D6A6A;color:#fff;font-size:13px;font-weight:700;padding:7px 10px;margin:22px 0 8px;text-transform:uppercase;">Supporting calculations</div>`;
+  used.forEach(u=>{
+    h += `<div style="${F}font-size:13px;font-weight:700;color:${u.color};margin:12px 0 4px;">Tab ${u.tab} – ${E(u.title)}</div>`;
+    u.calcs.forEach(c=>{
+      h += `<table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;${F}font-size:12px;margin-bottom:8px;"><tr><th colspan="3" style="text-align:left;background:#F1F5F9;padding:5px 8px;border:1px solid #E2E8F0;">${E(c.title)}</th></tr>`;
+      c.rows.forEach(r=>{
+        if(r.k==="sub") h += `<tr><td colspan="3" style="padding:4px 8px;border:1px solid #E2E8F0;font-weight:700;color:#64748B;font-size:11px;">${E(r.label)}</td></tr>`;
+        else if(r.k==="msg") h += `<tr><td colspan="3" style="padding:4px 8px;border:1px solid #E2E8F0;color:#B45309;font-style:italic;">${E(r.label)}</td></tr>`;
+        else { const res = r.k==="result"; h += `<tr${res?' style="background:#DCFCE7;font-weight:700;"':""}><td style="padding:4px 8px;border:1px solid #E2E8F0;">${E(r.label)}</td><td style="padding:4px 8px;border:1px solid #E2E8F0;">${E(r.value)}</td><td style="padding:4px 8px;border:1px solid #E2E8F0;">${E(r.unit)}</td></tr>`; }
+      });
+      h += "</table>";
+    });
+  });
+  return h;
+}
+
+>>>>>>> d4af69dc3c9388d559b7f3d26bc5df6d0ad53cef
 
 const LIGHT_CONTROLS = ["Manual switching only","Occupancy sensors","Dimming","Manual on, auto off","Time control to display lighting","Other"];
 function lampChecklist(prefix){
