@@ -9,7 +9,7 @@
 
 <!-- Build stamp. INCREMENT THIS ON EVERY DEPLOYMENT (YYYY-MM-DD-NN).
      The freshness check below reads it, so it lives in exactly one place. -->
-<meta name="build-version" content="2026-10-06-01">
+<meta name="build-version" content="2026-10-06-04">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -475,6 +475,7 @@ select.tbx-in{font-size:15px;}
 /* ---------- PCDB boiler look-up ---------- */
 .lookup-wrap{display:flex;gap:6px;align-items:center;}
 .lookup-wrap input{flex:1;min-width:0;}
+.lookup-btns{display:flex;gap:4px;flex:0 0 auto;}
 .lookup-btn{flex:0 0 auto;font:inherit;font-size:12px;font-weight:700;white-space:nowrap;color:var(--primary-color);background:var(--primary-soft);border:1px solid #BFDAD4;border-radius:8px;padding:8px 10px;cursor:pointer;}
 .lookup-btn:hover{background:var(--primary-color);color:#fff;}
 .pcdb-card{max-width:min(980px,96vw);width:96vw;max-height:94vh;display:flex;flex-direction:column;padding:18px 20px 14px;}
@@ -499,6 +500,17 @@ select.tbx-in{font-size:15px;}
 .pcdb-label-tags span{font-size:12px;font-weight:600;background:rgba(255,255,255,.18);border-radius:999px;padding:2px 10px;}
 .pcdb-label-tags span:empty{display:none;}
 .pcdb-label-tags .cur{background:#DCFCE7;color:#14532D;}
+.pcdb-choice-hint{font-size:12.5px;opacity:.9;line-height:1.4;}
+.pcdb-choices{display:flex;flex-direction:column;gap:8px;padding:12px;max-height:52vh;overflow-y:auto;}
+.pcdb-choice{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;font:inherit;background:#fff;border:1px solid var(--border-color);border-left:4px solid var(--primary-color);border-radius:10px;padding:10px 70px 10px 12px;cursor:pointer;}
+.pcdb-choice:hover{background:var(--primary-soft);border-color:var(--primary-color);}
+.pcdb-choice-main{font-weight:700;font-size:14px;color:var(--text-color);}
+.pcdb-choice-sub{font-size:12px;color:var(--muted);}
+.pcdb-choice-eff{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-weight:800;font-size:14px;color:#14532D;background:#DCFCE7;border-radius:8px;padding:4px 8px;}
+.pcdb-back{display:block;margin:2px auto 0;font:inherit;font-size:13px;font-weight:600;color:var(--primary-color);background:none;border:none;cursor:pointer;}
+.pcdb-label-key{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 16px 2px;padding:10px 14px;background:#DCFCE7;border:2px solid #22C55E;border-radius:10px;}
+.pcdb-label-key span{font-size:12.5px;font-weight:600;color:#14532D;line-height:1.3;}
+.pcdb-label-key strong{font-size:24px;color:#14532D;white-space:nowrap;}
 .pcdb-label-dl{display:grid;grid-template-columns:auto 1fr;margin:0;padding:6px 16px;}
 .pcdb-label-dl dt,.pcdb-label-dl dd{padding:7px 0;border-bottom:1px solid #EEF2F6;font-size:13.5px;margin:0;}
 .pcdb-label-dl dt{color:var(--muted);padding-right:14px;}
@@ -1981,15 +1993,19 @@ function makeRowTable(containerId, columns, addLabel){
       input.dataset.key = c.key;
       if(c.lookup==="pcdb"){
         // text box + "Find boiler" button that searches the SAP PCDB
-        const btn = el("button",{type:"button", class:"lookup-btn", title:"Search the SAP boiler database (PCDB)"},"🔍 Find boiler");
         const hid = el("input",{type:"hidden"}); hid.dataset.key = c.key+"__pcdb";
-        btn.addEventListener("click", ()=>{
-          let cur = null; try{ cur = hid.value ? JSON.parse(hid.value).rec[0] : null; }catch(e){}
-          openPcdbFinder((r,rev)=> pcdbFillRow(tr, c.key, r, rev), cur);
-        });
-        // typing over a chosen boiler's name detaches it from the PCDB record
+        const open = kind=>{
+          let cur = null;
+          try{ const o = hid.value ? JSON.parse(hid.value) : null; if(o && (o.kind||"boiler")===kind) cur = o.rec[0]; }catch(e){}
+          openPcdbFinder((r,rev,k)=> pcdbFillRow(tr, c.key, r, rev, k), cur, kind);
+        };
+        const bBoiler = el("button",{type:"button", class:"lookup-btn", title:"Search the SAP boiler database (PCDB)"},"🔍 Boiler");
+        const bHp = el("button",{type:"button", class:"lookup-btn", title:"Search the SAP heat pump database (PCDB)"},"🔍 Heat pump");
+        bBoiler.addEventListener("click", ()=> open("boiler"));
+        bHp.addEventListener("click", ()=> open("heatpump"));
+        // typing over a chosen product's name detaches it from the PCDB record
         input.addEventListener("input", ()=>{ if(hid.value && input.value!==input.dataset.pcdbText) hid.value = ""; });
-        td.appendChild(el("div",{class:"lookup-wrap"}, input, btn, hid));
+        td.appendChild(el("div",{class:"lookup-wrap"}, input, el("div",{class:"lookup-btns"}, bBoiler, bHp), hid));
       } else {
         td.appendChild(input);
       }
@@ -3350,18 +3366,6 @@ const PCDB_SEARCH_PAGE = "https://www.ncm-pcdb.org.uk/sap/pcdbsearch.jsp?pid=26"
 const PCDB_FUEL = {1:"Mains gas", 2:"LPG", 4:"Heating oil", 71:"Bio-liquid (HVO)"};
 const PCDB_FUEL_TO_FORM = {1:"Natural gas", 2:"LPG", 4:"Oil"};        // matches the form's Fuel lists
 const PCDB_TYPE = {1:"Regular", 2:"Combi", 3:"CPSU"};
-let pcdbPromise = null;
-function pcdbLoad(){
-  if(!pcdbPromise){
-    pcdbPromise = fetch(PCDB_URL).then(r=>{ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
-      .then(d=>{
-        d.rows.forEach(r=>{ r.hay = (r[1]+" "+r[2]+" "+r[3]+" "+r[4]+" "+r[0]).toLowerCase(); });
-        return d;
-      })
-      .catch(e=>{ pcdbPromise = null; throw e; });
-  }
-  return pcdbPromise;
-}
 function pcdbOutput(r){
   const a = r[7], b = r[8];
   if(a==null && b==null) return "";
@@ -3376,38 +3380,135 @@ function pcdbName(r){
   return [pre, brand, r[3], r[4]].filter(Boolean).join(" ").replace(/\s+/g," ").trim();
 }
 
-/* technical data for one PCDB record, as label rows */
+/* Code meanings checked against the labelled PCDB web pages (records 016770, 017150, 008182).
+   Codes not confirmed there are left blank rather than guessed. */
+const PCDB_CONDENSING = {1:"No", 2:"Yes"};
+const PCDB_BURNER = {1:"On-off", 2:"Variable (stepped or modulating)"};
+const PCDB_MOUNTING = {1:"Floor", 2:"Wall"};
+const PCDB_FLUE = {2:"Room-sealed", 3:"Open or room-sealed"};
+const PCDB_CATEGORY = {2:"SEDBUK based on certified data"};
+const pcdbPct = v => (v===null || v===undefined || v==="") ? "—" : (+v).toFixed(1)+"%";
+/* technical data for one PCDB record, as label rows (same wording as the PCDB website) */
 function pcdbLabelRows(r, rev){
   const years = (r[9] || "?") + " – " + (r[10]==="current" ? "current" : (r[10] || "?"));
+  const rows = [
+    ["PCDB number", r[0]], ["Manufacturer", r[1]], ["Brand name", r[2]], ["Model name", r[3]], ["Model qualifier", r[4] || "—"],
+    ["Boiler ID", r[11] || "—"], ["Fuel", PCDB_FUEL[r[5]] || String(r[5])], ["Main type", PCDB_TYPE[r[6]] || "—"], ["Output power", pcdbOutput(r) || "—"]
+  ];
+  if(r.length > 12){
+    rows.push(
+      ["Seasonal efficiency when used in non-domestic buildings", pcdbPct(r[14])],
+      ["SAP winter seasonal efficiency", pcdbPct(r[12])],
+      ["SAP summer seasonal efficiency", pcdbPct(r[13])],
+      ["Comparative hot water efficiency", pcdbPct(r[15])],
+      ["Efficiency category", PCDB_CATEGORY[r[21]] || "—"],
+      ["SAP equation used", r[20] ? String(r[20]) : "—"],
+      ["Condensing", PCDB_CONDENSING[r[16]] || "—"],
+      ["Burner control", PCDB_BURNER[r[17]] || "—"],
+      ["Mounting position", PCDB_MOUNTING[r[18]] || "—"],
+      ["Flue type", PCDB_FLUE[r[19]] || "—"]);
+  }
+  rows.push(["Years manufactured", years], ["PCDB revision", rev ? String(rev) : "—"]);
+  return rows;
+}
+
+/* ---------- Heat pumps (Table 362, Format 465) ----------
+   Fields and code meanings checked against the labelled PCDB web pages for
+   records 100011, 100071 and 104351. Codes not seen there are shown as
+   "code N" rather than guessed. The PCDB website shows no efficiency figures
+   for heat pumps, so none are shown here either. */
+const PCDB_HP_URL = "data/pcdb-heatpumps.json";
+const PCDB_HP_SEARCH_PAGE = "https://www.ncm-pcdb.org.uk/sap/searchpod.jsp?id=17";
+const PCDB_HP_SOURCE = {1:"Ground", 3:"Air"};
+const PCDB_HP_EMITTER = {1:"Flow temperature 55°C"};
+const PCDB_HP_DURATION = {"24":"Continuous", "V":"Variable – same as 9 but switches to 16 or 24 hours on colder days"};
+const hpCode = (map, v, what) => (v===null || v===undefined || v==="" || v===0) ? "—" : (map[v] || what+" code "+v);
+const hpNum = (v, dp, unit) => (v===null || v===undefined) ? "—" : (+v).toFixed(dp)+(unit||"");
+function hpLabelRows(r, rev){
+  const years = (r[12] || "?") + " – " + (r[13]==="current" ? "current" : (r[13] || "?"));
   return [
     ["PCDB number", r[0]], ["Manufacturer", r[1]], ["Brand name", r[2]], ["Model name", r[3]], ["Model qualifier", r[4] || "—"],
-    ["Fuel", PCDB_FUEL[r[5]] || String(r[5])], ["Main type", PCDB_TYPE[r[6]] || "—"], ["Output", pcdbOutput(r) || "—"],
+    ["Fuel", "Electricity"], ["Heat emitter", hpCode(PCDB_HP_EMITTER, r[6], "Emitter")],
+    ["Output power (kW) [@ -4.7°C]", hpNum(r[7], 3)], ["Heat source", hpCode(PCDB_HP_SOURCE, r[5], "Source")],
+    ["Heating duration", hpCode(PCDB_HP_DURATION, r[8], "Duration")],
+    ["HW volume (l)", r[9]==null ? "—" : String(r[9])], ["HW heat loss rate (kWh/day)", hpNum(r[10], 3)], ["HW heat exchanger area (m²)", hpNum(r[11], 3)],
     ["Years manufactured", years], ["PCDB revision", rev ? String(rev) : "—"]
   ];
 }
 
-/* Filter-style finder, like the PCDB website: Fuel → Main type → Brand → Model → Qualifier.
+/* ---------- product kinds the finder can search ---------- */
+const PCDB_KINDS = {
+  boiler: {
+    url: PCDB_URL, noun:"boiler", nouns:"boilers", title:"Search for boilers", icon:"🔥", site: PCDB_SEARCH_PAGE,
+    opt: [{idx:5, label:"Fuel", any:"Any fuel", fmt:v=> PCDB_FUEL[v] || "Fuel "+v},
+          {idx:6, label:"Main type", any:"Any type", fmt:v=> PCDB_TYPE[v] || "Type "+v}],
+    name: r=> pcdbName(r),
+    labelRows: (r,rev)=> pcdbLabelRows(r,rev),
+    key: r=> (r[14]!=null ? {label:"Seasonal efficiency when used in non-domestic buildings", value:pcdbPct(r[14])} : null),
+    tags: r=> [PCDB_FUEL[r[5]], PCDB_TYPE[r[6]]],
+    current: r=> r[10]==="current",
+    choiceMain: r=> [PCDB_FUEL[r[5]], PCDB_TYPE[r[6]], pcdbOutput(r)].filter(Boolean).join(" · "),
+    choiceSub: r=> (r[9]||"?")+"–"+(r[10]==="current"?"current":(r[10]||"?")) + (r[11] ? " · "+r[11] : "") + " · PCDB "+r[0],
+    choiceBadge: r=> r[14]!=null ? pcdbPct(r[14]) : "",
+    sort: (a,b)=> (a[5]-b[5]) || (a[6]-b[6]) || ((a[8]||0)-(b[8]||0)) || String(a[9]).localeCompare(String(b[9])),
+    hint: "They share a name but differ in fuel, type, output or years – check the data plate.",
+    formFuel: r=> PCDB_FUEL_TO_FORM[r[5]],
+    keep: 22,
+    foot: "Product data: SAP 10 PCDB, © Crown copyright, used with permission. The database covers SAP (domestic-scale) boilers, so larger commercial boilers may not be listed – use manufacturer data for those. ",
+    reportTitle: "Boiler Technical Data (PCDB)"
+  },
+  heatpump: {
+    url: PCDB_HP_URL, noun:"heat pump", nouns:"heat pumps", title:"Search for heat pumps", icon:"♨️", site: PCDB_HP_SEARCH_PAGE,
+    opt: [{idx:5, label:"Heat source", any:"Any source", fmt:v=> PCDB_HP_SOURCE[v] || "Source code "+v},
+          {idx:6, label:"Heat emitter", any:"Any emitter", fmt:v=> PCDB_HP_EMITTER[v] || "Emitter code "+v}],
+    name: r=> [r[2], r[3], r[4]].filter(Boolean).join(" ").replace(/\s+/g," ").trim(),
+    labelRows: (r,rev)=> hpLabelRows(r,rev),
+    key: r=> (r[7]!=null ? {label:"Output power (kW) at -4.7°C", value:hpNum(r[7],3)} : null),
+    tags: r=> [PCDB_HP_SOURCE[r[5]] ? PCDB_HP_SOURCE[r[5]]+" source" : "", PCDB_HP_EMITTER[r[6]] || ""],
+    current: r=> r[13]==="current",
+    choiceMain: r=> [hpCode(PCDB_HP_SOURCE, r[5], "Source"), hpCode(PCDB_HP_EMITTER, r[6], "Emitter"), r[14] ? "Variant "+r[14] : ""].filter(Boolean).join(" · "),
+    choiceSub: r=> "Output "+hpNum(r[7],2," kW")+" · "+((PCDB_HP_DURATION[r[8]]||"").split(" –")[0] || "—")+" · PCDB "+r[0],
+    choiceBadge: r=> "",
+    sort: (a,b)=> (a[5]-b[5]) || ((a[6]||99)-(b[6]||99)) || ((a[14]||0)-(b[14]||0)) || String(a[0]).localeCompare(String(b[0])),
+    hint: "They share a name but are listed for different heat emitters or set-ups – match the PCDB number on the installation paperwork if you have it.",
+    formFuel: r=> "Grid electricity",
+    keep: 15,
+    foot: "Product data: SAP 10 PCDB, © Crown copyright, used with permission. The PCDB website doesn't publish heat pump efficiencies, so use manufacturer data (e.g. SCOP) for those. ",
+    reportTitle: "Heat Pump Technical Data (PCDB)"
+  }
+};
+const pcdbData = {};
+function pcdbLoadKind(kind){
+  const K = PCDB_KINDS[kind];
+  if(!pcdbData[kind]){
+    pcdbData[kind] = fetch(K.url).then(r=>{ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
+      .catch(e=>{ pcdbData[kind] = null; throw e; });
+  }
+  return pcdbData[kind];
+}
+function pcdbLoad(){ return pcdbLoadKind("boiler"); }
+
+/* Filter-style finder, like the PCDB website: two optional filters, then Brand → Model → Qualifier.
    The chosen product's technical data shows as a label beside the filters. */
-function openPcdbFinder(onPick, current){
-  const scrim = el("div",{class:"modal-scrim", role:"dialog", "aria-modal":"true", "aria-label":"Find a boiler"});
+function openPcdbFinder(onPick, current, kind){
+  kind = kind || "boiler";
+  const K = PCDB_KINDS[kind];
+  const scrim = el("div",{class:"modal-scrim", role:"dialog", "aria-modal":"true", "aria-label":K.title});
   const card = el("div",{class:"modal-card pcdb-card"});
   const close = el("button",{type:"button", class:"lamp-card-close", "aria-label":"Close"},"×");
   card.appendChild(el("div",{class:"guide-top"},
-    el("div",{}, el("div",{class:"guide-kicker"},"Product Characteristics Database (PCDB)"), el("h3",{},"Search for boilers")), close));
+    el("div",{}, el("div",{class:"guide-kicker"},"Product Characteristics Database (PCDB)"), el("h3",{},K.title)), close));
   const mk = (ph)=> el("select",{class:"pcdb-sel"}, el("option",{value:""},ph));
-  const sFuel = mk("Any fuel"), sType = mk("Any type"), sBrand = mk("Select"), sModel = mk("Select"), sQual = mk("Select");
+  const sA = mk(K.opt[0].any), sB = mk(K.opt[1].any), sBrand = mk("Select"), sModel = mk("Select"), sQual = mk("Select");
   const line = (label, sel)=> el("label",{class:"pcdb-fline"}, el("span",{}, label), sel);
   const reset = el("button",{type:"button", class:"pcdb-reset"},"Clear filters");
-  const status = el("div",{class:"pcdb-status"},"Loading the boiler database…");
+  const status = el("div",{class:"pcdb-status"},"Loading the "+K.noun+" database…");
   const filters = el("div",{class:"pcdb-filters"},
-    line("Fuel", sFuel), line("Main type", sType), line("Brand name", sBrand), line("Model name", sModel), line("Model qualifier", sQual),
+    line(K.opt[0].label, sA), line(K.opt[1].label, sB), line("Brand name", sBrand), line("Model name", sModel), line("Model qualifier", sQual),
     el("div",{class:"pcdb-factions"}, status, reset));
   const label = el("div",{class:"pcdb-label"});
   card.appendChild(el("div",{class:"pcdb-body"}, filters, label));
-  card.appendChild(el("div",{class:"pcdb-foot"},
-    "Product data: SAP PCDB, © Crown copyright, used with permission. Efficiency figures aren't included – check them on the ",
-    el("a",{href:PCDB_SEARCH_PAGE, target:"_blank", rel:"noopener"},"PCDB website"),
-    " using the PCDB number. The database covers SAP (domestic-scale) boilers, so larger commercial boilers may not be listed."));
+  card.appendChild(el("div",{class:"pcdb-foot"}, K.foot, el("a",{href:K.site, target:"_blank", rel:"noopener"},"PCDB website")));
   scrim.appendChild(card);
   const onKey = e=>{ if(e.key==="Escape") done(); };
   const done = ()=>{ document.removeEventListener("keydown", onKey); scrim.remove(); };
@@ -3416,100 +3517,144 @@ function openPcdbFinder(onPick, current){
   document.addEventListener("keydown", onKey);
   document.body.appendChild(scrim);
 
-  let data = null;
+  let data = null, lastHits = [];
   const QUAL_NONE = "\u0000none";
+  const iA = K.opt[0].idx, iB = K.opt[1].idx;
   const fill = (sel, values, keep, fmt)=>{
     const ph = sel.options[0].textContent;
     sel.innerHTML = ""; sel.appendChild(el("option",{value:""},ph));
     values.forEach(v=> sel.appendChild(el("option",{value:String(v)}, fmt ? fmt(v) : (v===QUAL_NONE ? "(none)" : v))));
     sel.value = values.map(String).includes(String(keep)) ? String(keep) : "";
   };
-  const uniq = (rows, fn)=> Array.from(new Set(rows.map(fn))).sort((a,b)=> String(a).localeCompare(String(b),"en",{numeric:true, sensitivity:"base"}));
+  const uniq = (rows, fn)=> Array.from(new Set(rows.map(fn).filter(v=> v!==null && v!==undefined && v!==""))).sort((a,b)=> String(a).localeCompare(String(b),"en",{numeric:true, sensitivity:"base"}));
   const match = (r, upto)=>{
-    if(upto>=1 && sFuel.value && r[5]!==+sFuel.value) return false;
-    if(upto>=2 && sType.value && r[6]!==+sType.value) return false;
+    if(upto>=1 && sA.value && String(r[iA])!==sA.value) return false;
+    if(upto>=2 && sB.value && String(r[iB])!==sB.value) return false;
     if(upto>=3 && sBrand.value && r[2]!==sBrand.value) return false;
     if(upto>=4 && sModel.value && r[3]!==sModel.value) return false;
     if(upto>=5 && sQual.value && (r[4]||QUAL_NONE)!==sQual.value) return false;
     return true;
   };
-  // rebuild the lists below the one that changed (level 0 = everything)
   function refresh(level){
     const rows = data.rows;
-    if(level<1) fill(sFuel, uniq(rows, r=>r[5]), sFuel.value, v=> PCDB_FUEL[v] || "Fuel "+v);
-    if(level<2) fill(sType, uniq(rows.filter(r=>match(r,1)), r=>r[6]), sType.value, v=> PCDB_TYPE[v] || "Type "+v);
+    if(level<1) fill(sA, uniq(rows, r=>r[iA]), sA.value, K.opt[0].fmt);
+    if(level<2) fill(sB, uniq(rows.filter(r=>match(r,1)), r=>r[iB]), sB.value, K.opt[1].fmt);
     if(level<3) fill(sBrand, uniq(rows.filter(r=>match(r,2)), r=>r[2]), sBrand.value);
     if(level<4){ fill(sModel, sBrand.value ? uniq(rows.filter(r=>match(r,3)), r=>r[3]) : [], sModel.value); sModel.disabled = !sBrand.value; }
     if(level<5){
-      const qs = sModel.value ? uniq(rows.filter(r=>match(r,4)), r=> r[4] || QUAL_NONE) : [];
+      const qs = sModel.value ? Array.from(new Set(rows.filter(r=>match(r,4)).map(r=> r[4] || QUAL_NONE))).sort((a,b)=> String(a).localeCompare(String(b),"en",{numeric:true})) : [];
       fill(sQual, qs, sQual.value);
       if(qs.length===1) sQual.value = String(qs[0]);
       sQual.disabled = !sModel.value;
     }
     const hits = rows.filter(r=>match(r,5));
-    status.textContent = hits.length.toLocaleString("en-GB")+" boiler"+(hits.length===1?"":"s")+" match";
+    lastHits = hits;
+    status.textContent = hits.length.toLocaleString("en-GB")+" "+(hits.length===1?K.noun:K.nouns)+" match";
     showLabel(sModel.value && hits.length===1 ? hits[0] : null, hits.length);
   }
-  function showLabel(r, n){
-    label.innerHTML = "";
+  // several products still match: list them so the right one can be picked
+  function showChoices(hits){
+    label.innerHTML = ""; label.classList.add("ready","choices");
+    label.appendChild(el("div",{class:"pcdb-label-head"},
+      el("div",{class:"pcdb-label-kicker"}, hits.length+" "+K.nouns+" match"),
+      el("div",{class:"pcdb-label-name"}, "Pick the right one"),
+      el("div",{class:"pcdb-choice-hint"}, K.hint)));
+    const list = el("div",{class:"pcdb-choices"});
+    hits.slice().sort(K.sort).forEach(r=>{
+      const badge = K.choiceBadge(r);
+      const b = el("button",{type:"button", class:"pcdb-choice"},
+        el("span",{class:"pcdb-choice-main"}, K.choiceMain(r)),
+        el("span",{class:"pcdb-choice-sub"}, K.choiceSub(r)),
+        badge ? el("span",{class:"pcdb-choice-eff"}, badge) : null);
+      b.addEventListener("click", ()=> showLabel(r, hits.length, true));
+      list.appendChild(b);
+    });
+    label.appendChild(list);
+  }
+  function showLabel(r, n, fromChoices){
+    label.innerHTML = ""; label.classList.remove("choices");
+    if(!r && sModel.value && n>1 && n<=60){ showChoices(lastHits); return; }
     if(!r){
       label.classList.remove("ready");
       label.appendChild(el("div",{class:"pcdb-label-empty"},
-        el("div",{class:"pcdb-label-icon"},"🔥"),
+        el("div",{class:"pcdb-label-icon"}, K.icon),
         el("strong",{},"Technical data"),
-        el("p",{}, sModel.value && n>1 ? "Choose a model qualifier to see this boiler's data." : "Choose the brand and model (and fuel or type if you know them). The boiler's technical data will appear here.")));
+        el("p",{}, sModel.value && n>1 ? "Choose a model qualifier (or another filter) to narrow it down." : "Choose the brand and model. The "+K.noun+"'s technical data will appear here.")));
       return;
     }
+    const rev = data.meta && data.meta.revision;
     label.classList.add("ready");
     label.appendChild(el("div",{class:"pcdb-label-head"},
       el("div",{class:"pcdb-label-kicker"},"PCDB "+r[0]),
-      el("div",{class:"pcdb-label-name"}, pcdbName(r)),
-      el("div",{class:"pcdb-label-tags"}, el("span",{}, PCDB_FUEL[r[5]] || ""), el("span",{}, PCDB_TYPE[r[6]] || ""), r[10]==="current" ? el("span",{class:"cur"},"Current model") : null)));
+      el("div",{class:"pcdb-label-name"}, K.name(r)),
+      el("div",{class:"pcdb-label-tags"}, ...K.tags(r).filter(Boolean).map(t=> el("span",{}, t)), K.current(r) ? el("span",{class:"cur"},"Current model") : null)));
+    const key = K.key(r);
+    if(key) label.appendChild(el("div",{class:"pcdb-label-key"}, el("span",{}, key.label), el("strong",{}, key.value)));
     const tbl = el("dl",{class:"pcdb-label-dl"});
-    pcdbLabelRows(r, data.meta && data.meta.revision).forEach(([k,v])=>{ tbl.appendChild(el("dt",{},k)); tbl.appendChild(el("dd",{}, v)); });
+    K.labelRows(r, rev).forEach(([k,v])=>{
+      if(key && k===key.label) return;
+      tbl.appendChild(el("dt",{},k)); tbl.appendChild(el("dd",{}, v));
+    });
     label.appendChild(tbl);
-    const use = el("button",{type:"button", class:"pcdb-use"},"Use this boiler ✓");
-    use.addEventListener("click", ()=>{ done(); onPick(r, data.meta && data.meta.revision); });
+    const use = el("button",{type:"button", class:"pcdb-use"},"Use this "+K.noun+" ✓");
+    use.addEventListener("click", ()=>{ done(); onPick(r, rev, kind); });
     label.appendChild(use);
-    label.appendChild(el("a",{class:"pcdb-label-link", href:PCDB_SEARCH_PAGE, target:"_blank", rel:"noopener"},"Check efficiencies on the PCDB website ↗"));
+    if(fromChoices){
+      const back = el("button",{type:"button", class:"pcdb-back"},"‹ Back to the "+lastHits.length+" matches");
+      back.addEventListener("click", ()=> showChoices(lastHits));
+      label.appendChild(back);
+    }
+    label.appendChild(el("a",{class:"pcdb-label-link", href:K.site, target:"_blank", rel:"noopener"},"Open the PCDB website ↗"));
   }
-  [[sFuel,1],[sType,2],[sBrand,3],[sModel,4],[sQual,5]].forEach(([s,lvl])=> s.addEventListener("change", ()=> refresh(lvl)));
-  reset.addEventListener("click", ()=>{ [sFuel,sType,sBrand,sModel,sQual].forEach(s=> s.value=""); refresh(0); });
+  [[sA,1],[sB,2],[sBrand,3],[sModel,4],[sQual,5]].forEach(([s,lvl])=> s.addEventListener("change", ()=> refresh(lvl)));
+  reset.addEventListener("click", ()=>{ [sA,sB,sBrand,sModel,sQual].forEach(s=> s.value=""); refresh(0); });
 
-  pcdbLoad().then(d=>{
+  pcdbLoadKind(kind).then(d=>{
     data = d;
-    // reopening a row that already has a boiler: start on that boiler
+    // reopening a row that already has a product: start on it
     const r0 = current && d.rows.find(r=>r[0]===current);
     if(r0){
-      refresh(0); sFuel.value = String(r0[5]); refresh(1); sType.value = String(r0[6]); refresh(2);
+      refresh(0); sA.value = String(r0[iA]); refresh(1); sB.value = String(r0[iB]); refresh(2);
       sBrand.value = r0[2]; refresh(3); sModel.value = r0[3]; refresh(4); sQual.value = r0[4] || QUAL_NONE; refresh(5);
+      if(lastHits.length>1) showLabel(r0, lastHits.length, true);   // several look alike: go straight to the one chosen
     } else refresh(0);
-    setTimeout(()=> (r0 ? label.querySelector(".pcdb-use") : sBrand).focus(), 0);
+    setTimeout(()=>{ const f = r0 ? label.querySelector(".pcdb-use") : sBrand; if(f) f.focus(); }, 0);
   }).catch(()=>{
-    status.textContent = "Couldn't load the boiler database. It needs a connection the first time it's used, and the form must be opened from its GitHub Pages address.";
+    status.textContent = "Couldn't load the "+K.noun+" database. It needs a connection the first time it's used, and the form must be opened from its GitHub Pages address.";
     showLabel(null,0);
   });
 }
 
 /* fills a HVAC / DHW row from a PCDB record and keeps the record for the site note */
-function pcdbFillRow(tr, key, r, rev){
+function pcdbFillRow(tr, key, r, rev, kind){
+  kind = kind || "boiler";
+  const K = PCDB_KINDS[kind];
   const inp = tr.querySelector(`[data-key="${key}"]`);
   const hid = tr.querySelector(`[data-key="${key}__pcdb"]`);
-  if(hid) hid.value = JSON.stringify({rec:r.slice(0,11), rev:rev||null});
-  if(inp){ inp.value = pcdbName(r)+" (PCDB "+r[0]+")"; inp.dataset.pcdbText = inp.value; inp.dispatchEvent(new Event("input",{bubbles:true})); }
+  if(hid) hid.value = JSON.stringify({kind, rec:r.slice(0,K.keep), rev:rev||null});
+  if(inp){ inp.value = K.name(r)+" (PCDB "+r[0]+")"; inp.dataset.pcdbText = inp.value; inp.dispatchEvent(new Event("input",{bubbles:true})); }
   const fuelSel = tr.querySelector('[data-key="fuel"]');
-  const f = PCDB_FUEL_TO_FORM[r[5]];
+  const f = K.formFuel(r);
   if(fuelSel && f && Array.from(fuelSel.options).some(o=>o.value===f)){ fuelSel.value = f; fuelSel.dispatchEvent(new Event("change",{bubbles:true})); }
 }
-/* boilers chosen from the PCDB in a table, for the site note */
+/* products chosen from the PCDB in a table, for the site note */
 function pcdbChosen(rows, key){
   const out = [];
   rows.forEach(row=>{
     const v = row[key+"__pcdb"];
     if(!v) return;
-    try{ const o = JSON.parse(v); if(o && Array.isArray(o.rec)) out.push(o); }catch(e){}
+    try{ const o = JSON.parse(v); if(o && Array.isArray(o.rec)){ o.kind = o.kind || "boiler"; out.push(o); } }catch(e){}
   });
   return out;
+}
+/* adds the technical data tables for chosen products to a report section */
+function pcdbReportBlocks(chosen, addSub, addKv){
+  ["boiler","heatpump"].forEach(kind=>{
+    const list = chosen.filter(o=>o.kind===kind);
+    if(!list.length) return;
+    addSub(PCDB_KINDS[kind].reportTitle);
+    list.forEach(o=> addKv(PCDB_KINDS[kind].labelRows(o.rec, o.rev)));
+  });
 }
 
 const LIGHT_CONTROLS = ["Manual switching only","Occupancy sensors","Dimming","Manual on, auto off","Time control to display lighting","Other"];
@@ -4540,22 +4685,14 @@ function collectReport(){
   const s4 = S("Heating & Cooling");
   sub(s4,"HVAC Systems","2.02 · 3.05 · 3.06 · 5.01 · 6.01 · 6.03 · 6.04 · 6.11 · 6.13");
   table(s4,[{key:"name",label:"Make Model",w:2.6},{key:"area",label:"Area Served",w:2},{key:"type",label:"Type",w:2.4},{key:"fuel",label:"Fuel",w:1.4},{key:"controls",label:"Controls",w:2}], readRowTable(hvacTable.systems));
-  const hvBoilers = pcdbChosen(readRowTable(hvacTable.systems), "name");
-  if(hvBoilers.length){
-    sub(s4,"Boiler Technical Data (PCDB)");
-    hvBoilers.forEach(o=> kv(s4, pcdbLabelRows(o.rec, o.rev)));
-  }
+  pcdbReportBlocks(pcdbChosen(readRowTable(hvacTable.systems), "name"), t=>sub(s4,t), p=>kv(s4,p));
   note(s4,"HVAC justification notes",val("hv_notes"));
 
   /* 5 - DHW & ventilation */
   const s5 = S("Hot Water & Ventilation");
   sub(s5,"Domestic Hot Water","6.04 · 6.05 · 6.06 · 6.10");
   table(s5,[{key:"makemodel",label:"Make Model",w:1.9},{key:"name",label:"Area Served",w:1.4},{key:"type",label:"Type",w:1.7},{key:"fuel",label:"Fuel",w:1.3},{key:"storage",label:"Storage (L)",w:1.1},{key:"insulationtype",label:"Insulation Type",w:1.5},{key:"insulation",label:"Insul. (mm)",w:1},{key:"circulation",label:"Circ. Loop",w:1}], readRowTable(dhwTable.systems));
-  const dhwBoilers = pcdbChosen(readRowTable(dhwTable.systems), "makemodel");
-  if(dhwBoilers.length){
-    sub(s5,"Water Heater Technical Data (PCDB)");
-    dhwBoilers.forEach(o=> kv(s5, pcdbLabelRows(o.rec, o.rev)));
-  }
+  pcdbReportBlocks(pcdbChosen(readRowTable(dhwTable.systems), "makemodel"), t=>sub(s5,t.replace("Boiler","Water Heater")), p=>kv(s5,p));
   note(s5,"DHW justification notes",val("dhw_notes"));
   sub(s5,"Mechanical Ventilation (AHU)","6.07 · 6.08 · 6.09 · 6.12");
   table(s5,[{key:"name",label:"AHU",w:1.5},{key:"makemodel",label:"Make Model",w:2.2},{key:"controls",label:"Controls",w:1.8},{key:"sfp",label:"SFP (W/l/s)",w:1.3},{key:"heatrecovery",label:"Heat Recovery",w:1.4},{key:"hrtype",label:"Heat Recovery Type",w:2.4}], readRowTable(dhwTable.ahu));
