@@ -9,7 +9,11 @@
 
 <!-- Build stamp. INCREMENT THIS ON EVERY DEPLOYMENT (YYYY-MM-DD-NN).
      The freshness check below reads it, so it lives in exactly one place. -->
+<<<<<<< HEAD
 <meta name="build-version" content="2026-10-07-01">
+=======
+<meta name="build-version" content="2026-10-06-04">
+>>>>>>> baafbf7b65264e144df5c96da4e1907c8faac6e0
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -3646,7 +3650,11 @@ function openPcdbFinder(onPick, current, kind){
       else if(l===N+2){ fill(s, sBrand.value ? uniq(pool, r=>r[3]) : [], s.value); s.disabled = !sBrand.value; }
       else { const qs = sModel.value ? uniq(pool, r=> r[4]||QUAL_NONE) : []; fill(s, qs, s.value); if(qs.length===1) s.value = String(qs[0]); s.disabled = !sModel.value; }
     }
+<<<<<<< HEAD
     const hits = rows.filter(r=>match(r,N+3));
+=======
+    const hits = rows.filter(r=>match(r,5));
+>>>>>>> baafbf7b65264e144df5c96da4e1907c8faac6e0
     lastHits = hits;
     status.textContent = hits.length.toLocaleString("en-GB")+" "+(hits.length===1?K.noun:K.nouns)+" match";
     showLabel(sModel.value && hits.length===1 ? hits[0] : null, hits.length);
