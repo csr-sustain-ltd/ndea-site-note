@@ -9,11 +9,7 @@
 
 <!-- Build stamp. INCREMENT THIS ON EVERY DEPLOYMENT (YYYY-MM-DD-NN).
      The freshness check below reads it, so it lives in exactly one place. -->
-<<<<<<< HEAD
-<meta name="build-version" content="2026-10-06-04">
-=======
-<meta name="build-version" content="2026-10-06-03">
->>>>>>> 6036be9ad2cba2e03f342b868219eaeae9e8457d
+<meta name="build-version" content="2026-10-07-01">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -252,6 +248,8 @@ body{
 .modal-card{background:#fff;border-radius:14px;max-width:440px;width:100%;padding:24px 26px;box-shadow:0 20px 50px rgba(0,0,0,.2);}
 .modal-card h3{margin:0 0 10px;font-size:18px;color:var(--primary-color);}
 .modal-card p{margin:0 0 20px;color:var(--text-color);font-size:14px;line-height:1.55;word-break:break-word;}
+.em-calcs{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;line-height:1.45;background:#FFF7ED;border:1px solid #FED7AA;border-radius:10px;padding:10px 12px;margin:-6px 0 18px;cursor:pointer;}
+.em-calcs input{margin-top:3px;width:16px;height:16px;accent-color:var(--primary-color);}
 .modal-btns{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;}
 
 /* Lamp reference cards + photo viewer */
@@ -359,6 +357,9 @@ body.tbx-open{overflow:hidden;}
 .tbx-back:hover{background:#E6F2EF;}
 .tbx-close{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.55);}
 .tbx-close:hover{background:rgba(255,255,255,.28);}
+.tbx-pdf{background:#F59E0B;color:#1F2937;border-color:#F59E0B;}
+.tbx-pdf:hover{background:#FBBF24;}
+@media(max-width:640px){ .tbx-pdf{padding:7px 10px;} }
 .tbx-main{flex:1;overflow-y:auto;padding:26px 24px 60px;}
 .tbx-home,.tbx-view{max-width:1100px;margin:0 auto;}
 .tbx-hero h2{margin:0 0 6px;font-size:26px;color:#0F172A;}
@@ -477,6 +478,12 @@ select.tbx-in{font-size:15px;}
 .other-in{margin-top:6px;}
 
 /* ---------- PCDB boiler look-up ---------- */
+.add-row-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.add-row-actions .add-row-btn{margin-top:0;}
+.add-row-btn.lookup-add{border-style:solid;background:var(--primary-soft);}
+.pcdb-chip{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px;font-size:12px;font-weight:600;color:#14532D;background:#DCFCE7;border:1px solid #86EFAC;border-radius:8px;padding:5px 8px;}
+.pcdb-chip-text{flex:1;min-width:0;}
+.pcdb-chip-btn{font:inherit;font-size:11.5px;font-weight:700;color:var(--primary-color);background:#fff;border:1px solid #BFDAD4;border-radius:6px;padding:2px 8px;cursor:pointer;}
 .lookup-wrap{display:flex;gap:6px;align-items:center;}
 .lookup-wrap input{flex:1;min-width:0;}
 .lookup-btns{display:flex;gap:4px;flex:0 0 auto;}
@@ -1081,7 +1088,7 @@ input.epc-masked{color:transparent !important;text-shadow:0 0 9px rgba(30,41,59,
 <div class="actionbar">
   <div class="status">STATUS: <span id="status-text">Draft — not yet generated</span></div>
   <div class="buttons">
-    <button class="btn btn-toolbox" id="btn-toolbox" type="button" onclick="openToolbox()" title="Calculators and reference data for modelling">🧰 Toolbox</button>
+    <button class="btn btn-toolbox" id="btn-toolbox" type="button" onclick="tbLaunch()" title="Opens the calculators in a new tab">🧰 Toolbox ↗</button>
     <button class="btn btn-secondary" id="btn-clear">Clear Form</button>
     <button class="btn btn-primary" id="btn-next">Next</button>
     <button class="btn btn-primary" id="btn-generate" style="display:none;">Generate Word Site Note</button>
@@ -1998,18 +2005,10 @@ function makeRowTable(containerId, columns, addLabel){
       if(c.lookup==="pcdb"){
         // text box + "Find boiler" button that searches the SAP PCDB
         const hid = el("input",{type:"hidden"}); hid.dataset.key = c.key+"__pcdb";
-        const open = kind=>{
-          let cur = null;
-          try{ const o = hid.value ? JSON.parse(hid.value) : null; if(o && (o.kind||"boiler")===kind) cur = o.rec[0]; }catch(e){}
-          openPcdbFinder((r,rev,k)=> pcdbFillRow(tr, c.key, r, rev, k), cur, kind);
-        };
-        const bBoiler = el("button",{type:"button", class:"lookup-btn", title:"Search the SAP boiler database (PCDB)"},"🔍 Boiler");
-        const bHp = el("button",{type:"button", class:"lookup-btn", title:"Search the SAP heat pump database (PCDB)"},"🔍 Heat pump");
-        bBoiler.addEventListener("click", ()=> open("boiler"));
-        bHp.addEventListener("click", ()=> open("heatpump"));
+        const chip = el("div",{class:"pcdb-chip", style:"display:none;"});
         // typing over a chosen product's name detaches it from the PCDB record
-        input.addEventListener("input", ()=>{ if(hid.value && input.value!==input.dataset.pcdbText) hid.value = ""; });
-        td.appendChild(el("div",{class:"lookup-wrap"}, input, el("div",{class:"lookup-btns"}, bBoiler, bHp), hid));
+        input.addEventListener("input", ()=>{ if(hid.value && input.value!==input.dataset.pcdbText){ hid.value = ""; pcdbRenderChip(tr, c.key); } });
+        td.appendChild(input); td.appendChild(hid); td.appendChild(chip);
       } else {
         td.appendChild(input);
       }
@@ -2046,11 +2045,23 @@ function makeRowTable(containerId, columns, addLabel){
     delTd.appendChild(delBtn);
     tr.appendChild(delTd);
     tbody.appendChild(tr);
+    return tr;
   }
 
   const addBtn = el("button",{class:"add-row-btn",type:"button"}, "+ "+addLabel);
-  addBtn.onclick = addRow;
-  wrap.appendChild(addBtn);
+  addBtn.onclick = ()=>{ addRow(); };
+  const lookupCol = columns.find(c=> c.lookup==="pcdb");
+  if(lookupCol){
+    // add a row straight from the PCDB: boiler or heat pump
+    const mkBtn = (kind, text)=>{
+      const b = el("button",{class:"add-row-btn lookup-add",type:"button", title:"Find it in the SAP Product Characteristics Database"}, text);
+      b.onclick = ()=> openPcdbFinder((r,rev,k)=>{ const tr = addRow(); pcdbFillRow(tr, lookupCol.key, r, rev, k); }, null, kind);
+      return b;
+    };
+    wrap.appendChild(el("div",{class:"add-row-actions"}, addBtn, mkBtn("boiler","🔍 Add boiler from PCDB"), mkBtn("heatpump","🔍 Add heat pump from PCDB")));
+  } else {
+    wrap.appendChild(addBtn);
+  }
 
   wrap._addRow = addRow;
   wrap._tbody = tbody;
@@ -3060,13 +3071,15 @@ function tbBuild(){
   const bar = el("div",{class:"tbx-bar"});
   const back = el("button",{type:"button", class:"tbx-back"},"‹ All tools");
   const title = el("div",{class:"tbx-bartitle"}, el("span",{class:"tbx-baricon"},"🧰"), el("span",{},"Assessor Toolbox"));
-  const close = el("button",{type:"button", class:"tbx-close", "aria-label":"Close toolbox and return to the form"},"Back to form ✕");
-  bar.appendChild(back); bar.appendChild(title); bar.appendChild(close);
+  const pdfBtn = el("button",{type:"button", class:"tbx-close tbx-pdf", title:"Download a PDF of the calculators you've used"},"⬇ Download PDF");
+  pdfBtn.addEventListener("click", tbDownloadPdf);
+  const close = el("button",{type:"button", class:"tbx-close", "aria-label":"Go to the site note"}, TB_TAB ? "Site note ↗" : "Back to form ✕");
+  bar.appendChild(back); bar.appendChild(title); bar.appendChild(pdfBtn); bar.appendChild(close);
   const main = el("div",{class:"tbx-main"});
   const home = el("div",{class:"tbx-home"});
   home.appendChild(el("div",{class:"tbx-hero"},
     el("h2",{},"Calculators & reference data"),
-    el("p",{},"Everything from the Data and Supporting Calculations workbook, one card per spreadsheet tab. Any calculator you use is added to a calculations PDF when you generate the site note."),
+    el("p",{},"Everything from the Data and Supporting Calculations workbook, one card per spreadsheet tab. Download the calculators you've used as a PDF at any time with ⬇ Download PDF – they're also offered with the site note when it's generated. Keep this tab open to come back to your figures."),
     el("div",{class:"tbx-legend"}, el("span",{class:"lg-in"},"Yellow boxes – enter a value"), el("span",{class:"lg-out"},"Green boxes – the answer"))));
   const grid = el("div",{class:"tbx-grid"});
   TB_TOOLS.forEach((t,i)=>{
@@ -3110,8 +3123,16 @@ function tbBuild(){
     main.scrollTop = 0;
   }
   back.addEventListener("click", ()=>{ if(tbDepth>=2) history.back(); else show(null); });
-  close.addEventListener("click", tbClose);
+  close.addEventListener("click", ()=>{ if(TB_TAB) tbGoToSiteNote(); else tbClose(); });
+  // keep a copy of the calculators used, so the site note tab can include them
+  let saveT = null;
+  const save = ()=>{ clearTimeout(saveT); saveT = setTimeout(tbSaveUsed, 400); };
+  tbRoot.addEventListener("input", save); tbRoot.addEventListener("change", save); tbRoot.addEventListener("click", save);
   tbRoot._show = show;
+  tbRoot._refreshBadges = ()=>{
+    const used = new Set(tbCollectUsed().map(u=>u.title));
+    grid.querySelectorAll(".tbx-card").forEach(c=> c.classList.toggle("used", used.has(TB_TOOLS.find(x=>x.id===c.dataset.id).title)));
+  };
   tbRoot.appendChild(bar); tbRoot.appendChild(main);
   document.body.appendChild(tbRoot);
 }
@@ -3144,6 +3165,7 @@ function tbClose(){
 window.addEventListener("popstate", e=>{
   if(!tbRoot) return;
   const st = e.state;
+  if(TB_TAB && !(st && st.tbx)){ tbDepth = 0; tbRoot._show(null); return; }   // own tab: Back ends on the toolbox home page
   if(st && st.tbx){
     tbDepth = st.tbx==="home" ? 1 : 2;
     tbDisplay(true);
@@ -3154,7 +3176,66 @@ window.addEventListener("popstate", e=>{
   }
 });
 if(history.state && history.state.tbx) history.replaceState(null, "");
-function tbKey(e){ if(e.key==="Escape" && tbRoot && !document.querySelector(".lamp-card, .guide-card")) tbClose(); }
+function tbKey(e){ if(!TB_TAB && e.key==="Escape" && tbRoot && !document.querySelector(".lamp-card, .guide-card")) tbClose(); }
+
+/* ---------- Toolbox in its own browser tab ----------
+   The site note opens index.html?toolbox in a named tab ("ndea-toolbox"), so clicking
+   Toolbox again returns to the same tab with its figures still there. The two tabs share
+   data through localStorage: the toolbox saves the calculators used, the site note saves
+   the site details for the PDF header. */
+const TB_TAB = /[?&]toolbox\b/.test(location.search);
+const TB_KEY_USED = "ndea-tb-used", TB_KEY_META = "ndea-tb-meta", TB_KEY_RESET = "ndea-tb-reset";
+function tbLaunch(){
+  tbSaveMeta();
+  const url = location.pathname + "?toolbox";
+  const w = window.open(url, "ndea-toolbox");
+  if(!w) location.href = url;                  // pop-up blocked: open in this tab instead
+  else try{ w.focus(); }catch(e){}
+}
+function tbGoToSiteNote(){
+  try{ if(window.opener && !window.opener.closed){ window.opener.focus(); return; } }catch(e){}
+  window.open(location.pathname, "ndea-sitenote");
+}
+function tbSaveMeta(){
+  try{
+    localStorage.setItem(TB_KEY_META, JSON.stringify({
+      address:val("p_address"), postcode:val("p_postcode"), assessor:val("p_assessor"), membership:val("p_membership"),
+      dateFmt: val("p_date") ? new Date(val("p_date")+"T00:00:00").toLocaleDateString("en-GB") : "", t:Date.now()}));
+  }catch(e){}
+}
+function tbMeta(){
+  let m = {};
+  try{ m = JSON.parse(localStorage.getItem(TB_KEY_META)||"{}") || {}; }catch(e){}
+  return Object.assign({address:"", postcode:"", assessor:"", membership:"", dateFmt:""}, m, {generated:new Date().toLocaleDateString("en-GB")});
+}
+function tbSaveUsed(){
+  try{ localStorage.setItem(TB_KEY_USED, JSON.stringify({t:Date.now(), used:tbCollectUsed()})); }catch(e){}
+  if(tbRoot && tbRoot._refreshBadges) tbRoot._refreshBadges();
+}
+/* calculators used, as saved by the toolbox tab */
+function tbStoredUsed(){
+  if(TB_TAB && tbRoot) return tbCollectUsed();
+  try{ const o = JSON.parse(localStorage.getItem(TB_KEY_USED)||"null"); return (o && Array.isArray(o.used)) ? o.used : []; }catch(e){ return []; }
+}
+async function tbDownloadPdf(){
+  const used = tbCollectUsed();
+  if(!used.length){ alert("No calculators have been used yet – enter some figures in a tool first."); return; }
+  try{
+    const meta = tbMeta();
+    const blob = await tbBuildPdf(used, meta);
+    const addr = (meta.address||"site").replace(/[^a-z0-9]+/gi,"_").replace(/^_+|_+$/g,"").slice(0,40) || "site";
+    downloadBlob(blob, `NDEA_Calculations_${addr}_${new Date().toISOString().slice(0,10)}.pdf`);
+  }catch(e){ alert("The PDF couldn't be created – it needs a connection to load the PDF library the first time."); }
+}
+// keep the PDF header details current while the site note is being filled in
+if(!TB_TAB){ let mt = null; document.addEventListener("input", e=>{ if(e.target && /^p_/.test(e.target.id||"")){ clearTimeout(mt); mt = setTimeout(tbSaveMeta, 500); } }); document.addEventListener("change", e=>{ if(e.target && e.target.id==="p_assessor") tbSaveMeta(); }); }
+// Clear Form in the site note resets the toolbox tab too
+window.addEventListener("storage", e=>{ if(TB_TAB && e.key===TB_KEY_RESET) location.reload(); });
+if(TB_TAB){
+  document.title = "Toolbox – NDEA Site Note | CSR Sustain";
+  window.addEventListener("DOMContentLoaded", ()=>{ const sh = document.querySelector(".shell"); if(sh) sh.style.display = "none"; });
+  setTimeout(()=>{ document.querySelectorAll(".shell, .actionbar").forEach(x=> x.style.display = "none"); openToolbox(); tbSaveUsed(); }, 0);
+}
 
 /* ---------- Which tools were used, and what they show ----------
    A calculator counts as "used" once the assessor has typed or picked
@@ -3396,7 +3477,6 @@ const pcdbPct = v => (v===null || v===undefined || v==="") ? "—" : (+v).toFixe
 function pcdbLabelRows(r, rev){
   const years = (r[9] || "?") + " – " + (r[10]==="current" ? "current" : (r[10] || "?"));
   const rows = [
-<<<<<<< HEAD
     ["PCDB number", r[0]], ["Manufacturer", r[1]], ["Brand name", r[2]], ["Model name", r[3]], ["Model qualifier", r[4] || "—"],
     ["Boiler ID", r[11] || "—"], ["Fuel", PCDB_FUEL[r[5]] || String(r[5])], ["Main type", PCDB_TYPE[r[6]] || "—"], ["Output power", pcdbOutput(r) || "—"]
   ];
@@ -3424,10 +3504,19 @@ function pcdbLabelRows(r, rev){
    for heat pumps, so none are shown here either. */
 const PCDB_HP_URL = "data/pcdb-heatpumps.json";
 const PCDB_HP_SEARCH_PAGE = "https://www.ncm-pcdb.org.uk/sap/searchpod.jsp?id=17";
-const PCDB_HP_SOURCE = {1:"Ground", 3:"Air"};
-const PCDB_HP_EMITTER = {1:"Flow temperature 55°C"};
+/* Website wording for each code. Heat source 1 (ground) and 3 (air), emitter 1 (55°C) and
+   service provision 1 were checked against labelled PCDB pages. The rest follow the order of the
+   PCDB website's own search lists and are backed by the data (e.g. code 4 = "QE4 R1_MEV" units,
+   code 8 = units qualified "Surface water", code 9 = Minus7 solar-assisted units; emitter 2 gives
+   the highest output and 5 the lowest, as 35°C and 65°C would). */
+const PCDB_HP_SOURCE = {1:"Ground", 3:"Air", 4:"Exhaust air MEV", 5:"Exhaust air MVHR", 6:"Mixed exhaust air MEV and outside air", 7:"Ground water", 8:"Surface water", 9:"Solar assisted – Type A", 10:"Solar assisted – Type B"};
+const PCDB_HP_SOURCE_ORDER = [1,3,4,5,6,7,8,9,10];
+const PCDB_HP_EMITTER = {1:"Flow temperature 55°C", 3:"Flow temperature 45°C", 2:"Flow temperature 35°C", 5:"Flow temperature 65°C", 0:"N/A"};
+const PCDB_HP_EMITTER_ORDER = [1,3,2,4,5,6,7,0];
+const PCDB_HP_SERVICE = {1:"Space and water heating all year", 2:"Space and water heating during heating season only", 3:"Space heating only", 4:"Water heating only"};
+const PCDB_HP_WC = {1:"Yes", 2:"No"};
 const PCDB_HP_DURATION = {"24":"Continuous", "V":"Variable – same as 9 but switches to 16 or 24 hours on colder days"};
-const hpCode = (map, v, what) => (v===null || v===undefined || v==="" || v===0) ? "—" : (map[v] || what+" code "+v);
+const hpCode = (map, v, what) => (v===null || v===undefined || v==="") ? "—" : (map[v] || what+" code "+v);
 const hpNum = (v, dp, unit) => (v===null || v===undefined) ? "—" : (+v).toFixed(dp)+(unit||"");
 function hpLabelRows(r, rev){
   const years = (r[12] || "?") + " – " + (r[13]==="current" ? "current" : (r[13] || "?"));
@@ -3435,29 +3524,12 @@ function hpLabelRows(r, rev){
     ["PCDB number", r[0]], ["Manufacturer", r[1]], ["Brand name", r[2]], ["Model name", r[3]], ["Model qualifier", r[4] || "—"],
     ["Fuel", "Electricity"], ["Heat emitter", hpCode(PCDB_HP_EMITTER, r[6], "Emitter")],
     ["Output power (kW) [@ -4.7°C]", hpNum(r[7], 3)], ["Heat source", hpCode(PCDB_HP_SOURCE, r[5], "Source")],
+    ["Service provision", hpCode(PCDB_HP_SERVICE, r[15], "Service")],
     ["Heating duration", hpCode(PCDB_HP_DURATION, r[8], "Duration")],
+    ["Weather compensation", hpCode(PCDB_HP_WC, r[14], "Code")],
     ["HW volume (l)", r[9]==null ? "—" : String(r[9])], ["HW heat loss rate (kWh/day)", hpNum(r[10], 3)], ["HW heat exchanger area (m²)", hpNum(r[11], 3)],
     ["Years manufactured", years], ["PCDB revision", rev ? String(rev) : "—"]
-=======
-    ["PCDB number", r[0]], ["Manufacturer", r[1]], ["Brand name", r[2]], ["Model name", r[3]], ["Model qualifier", r[4] || "—"],
-    ["Boiler ID", r[11] || "—"], ["Fuel", PCDB_FUEL[r[5]] || String(r[5])], ["Main type", PCDB_TYPE[r[6]] || "—"], ["Output power", pcdbOutput(r) || "—"]
->>>>>>> 6036be9ad2cba2e03f342b868219eaeae9e8457d
   ];
-  if(r.length > 12){
-    rows.push(
-      ["Seasonal efficiency when used in non-domestic buildings", pcdbPct(r[14])],
-      ["SAP winter seasonal efficiency", pcdbPct(r[12])],
-      ["SAP summer seasonal efficiency", pcdbPct(r[13])],
-      ["Comparative hot water efficiency", pcdbPct(r[15])],
-      ["Efficiency category", PCDB_CATEGORY[r[21]] || "—"],
-      ["SAP equation used", r[20] ? String(r[20]) : "—"],
-      ["Condensing", PCDB_CONDENSING[r[16]] || "—"],
-      ["Burner control", PCDB_BURNER[r[17]] || "—"],
-      ["Mounting position", PCDB_MOUNTING[r[18]] || "—"],
-      ["Flue type", PCDB_FLUE[r[19]] || "—"]);
-  }
-  rows.push(["Years manufactured", years], ["PCDB revision", rev ? String(rev) : "—"]);
-  return rows;
 }
 
 /* ---------- product kinds the finder can search ---------- */
@@ -3466,6 +3538,7 @@ const PCDB_KINDS = {
     url: PCDB_URL, noun:"boiler", nouns:"boilers", title:"Search for boilers", icon:"🔥", site: PCDB_SEARCH_PAGE,
     opt: [{idx:5, label:"Fuel", any:"Any fuel", fmt:v=> PCDB_FUEL[v] || "Fuel "+v},
           {idx:6, label:"Main type", any:"Any type", fmt:v=> PCDB_TYPE[v] || "Type "+v}],
+    chip: r=> "PCDB "+r[0]+(r[14]!=null ? " · Seasonal efficiency (non-domestic) "+pcdbPct(r[14]) : " · no non-domestic efficiency listed"),
     name: r=> pcdbName(r),
     labelRows: (r,rev)=> pcdbLabelRows(r,rev),
     key: r=> (r[14]!=null ? {label:"Seasonal efficiency when used in non-domestic buildings", value:pcdbPct(r[14])} : null),
@@ -3483,20 +3556,22 @@ const PCDB_KINDS = {
   },
   heatpump: {
     url: PCDB_HP_URL, noun:"heat pump", nouns:"heat pumps", title:"Search for heat pumps", icon:"♨️", site: PCDB_HP_SEARCH_PAGE,
-    opt: [{idx:5, label:"Heat source", any:"Any source", fmt:v=> PCDB_HP_SOURCE[v] || "Source code "+v},
-          {idx:6, label:"Heat emitter", any:"Any emitter", fmt:v=> PCDB_HP_EMITTER[v] || "Emitter code "+v}],
+    opt: [{idx:5, label:"Heat pump category", any:"Select", fmt:v=> PCDB_HP_SOURCE[v] || "Category code "+v, order:PCDB_HP_SOURCE_ORDER},
+          {idx:6, label:"Emitter category", any:"Select", fmt:v=> PCDB_HP_EMITTER[v] || "Emitter code "+v, order:PCDB_HP_EMITTER_ORDER},
+          {idx:15, label:"Service provision", any:"Select", fmt:v=> PCDB_HP_SERVICE[v] || "Service code "+v, order:[1,2,3,4]}],
+    chip: r=> "PCDB "+r[0]+" · "+[PCDB_HP_SOURCE[r[5]], PCDB_HP_EMITTER[r[6]], r[7]!=null ? hpNum(r[7],2)+" kW @ -4.7°C" : ""].filter(Boolean).join(" · "),
     name: r=> [r[2], r[3], r[4]].filter(Boolean).join(" ").replace(/\s+/g," ").trim(),
     labelRows: (r,rev)=> hpLabelRows(r,rev),
     key: r=> (r[7]!=null ? {label:"Output power (kW) at -4.7°C", value:hpNum(r[7],3)} : null),
-    tags: r=> [PCDB_HP_SOURCE[r[5]] ? PCDB_HP_SOURCE[r[5]]+" source" : "", PCDB_HP_EMITTER[r[6]] || ""],
+    tags: r=> [PCDB_HP_SOURCE[r[5]] || "", PCDB_HP_EMITTER[r[6]] || ""],
     current: r=> r[13]==="current",
-    choiceMain: r=> [hpCode(PCDB_HP_SOURCE, r[5], "Source"), hpCode(PCDB_HP_EMITTER, r[6], "Emitter"), r[14] ? "Variant "+r[14] : ""].filter(Boolean).join(" · "),
-    choiceSub: r=> "Output "+hpNum(r[7],2," kW")+" · "+((PCDB_HP_DURATION[r[8]]||"").split(" –")[0] || "—")+" · PCDB "+r[0],
+    choiceMain: r=> [hpCode(PCDB_HP_SOURCE, r[5], "Source"), hpCode(PCDB_HP_EMITTER, r[6], "Emitter"), r[14] ? "Weather compensation: "+hpCode(PCDB_HP_WC, r[14], "code") : ""].filter(Boolean).join(" · "),
+    choiceSub: r=> "Output "+hpNum(r[7],2," kW")+" · "+hpCode(PCDB_HP_SERVICE, r[15], "Service")+" · PCDB "+r[0],
     choiceBadge: r=> "",
-    sort: (a,b)=> (a[5]-b[5]) || ((a[6]||99)-(b[6]||99)) || ((a[14]||0)-(b[14]||0)) || String(a[0]).localeCompare(String(b[0])),
-    hint: "They share a name but are listed for different heat emitters or set-ups – match the PCDB number on the installation paperwork if you have it.",
+    sort: (a,b)=> (a[5]-b[5]) || ((a[6]||99)-(b[6]||99)) || String(a[0]).localeCompare(String(b[0])),
+    hint: "They share a name but are listed for different heat emitters or set-ups – pick the one that matches the installation.",
     formFuel: r=> "Grid electricity",
-    keep: 15,
+    keep: 14,
     foot: "Product data: SAP 10 PCDB, © Crown copyright, used with permission. The PCDB website doesn't publish heat pump efficiencies, so use manufacturer data (e.g. SCOP) for those. ",
     reportTitle: "Heat Pump Technical Data (PCDB)"
   }
@@ -3523,22 +3598,19 @@ function openPcdbFinder(onPick, current, kind){
   card.appendChild(el("div",{class:"guide-top"},
     el("div",{}, el("div",{class:"guide-kicker"},"Product Characteristics Database (PCDB)"), el("h3",{},K.title)), close));
   const mk = (ph)=> el("select",{class:"pcdb-sel"}, el("option",{value:""},ph));
-  const sA = mk(K.opt[0].any), sB = mk(K.opt[1].any), sBrand = mk("Select"), sModel = mk("Select"), sQual = mk("Select");
+  const opts = K.opt.map(o=> mk(o.any));
+  const sBrand = mk("Select"), sModel = mk("Select"), sQual = mk("Select");
+  const sels = opts.concat([sBrand, sModel, sQual]);
+  const N = opts.length;                                   // levels: 1..N optional filters, N+1 brand, N+2 model, N+3 qualifier
   const line = (label, sel)=> el("label",{class:"pcdb-fline"}, el("span",{}, label), sel);
   const reset = el("button",{type:"button", class:"pcdb-reset"},"Clear filters");
   const status = el("div",{class:"pcdb-status"},"Loading the "+K.noun+" database…");
   const filters = el("div",{class:"pcdb-filters"},
-    line(K.opt[0].label, sA), line(K.opt[1].label, sB), line("Brand name", sBrand), line("Model name", sModel), line("Model qualifier", sQual),
+    ...K.opt.map((o,i)=> line(o.label, opts[i])), line("Brand name", sBrand), line("Model name", sModel), line("Model qualifier", sQual),
     el("div",{class:"pcdb-factions"}, status, reset));
   const label = el("div",{class:"pcdb-label"});
   card.appendChild(el("div",{class:"pcdb-body"}, filters, label));
-<<<<<<< HEAD
   card.appendChild(el("div",{class:"pcdb-foot"}, K.foot, el("a",{href:K.site, target:"_blank", rel:"noopener"},"PCDB website")));
-=======
-  card.appendChild(el("div",{class:"pcdb-foot"},
-    "Product data: SAP 10 PCDB, © Crown copyright, used with permission. The database covers SAP (domestic-scale) boilers, so larger commercial boilers may not be listed – use manufacturer data for those. ",
-    el("a",{href:PCDB_SEARCH_PAGE, target:"_blank", rel:"noopener"},"PCDB website")));
->>>>>>> 6036be9ad2cba2e03f342b868219eaeae9e8457d
   scrim.appendChild(card);
   const onKey = e=>{ if(e.key==="Escape") done(); };
   const done = ()=>{ document.removeEventListener("keydown", onKey); scrim.remove(); };
@@ -3549,36 +3621,32 @@ function openPcdbFinder(onPick, current, kind){
 
   let data = null, lastHits = [];
   const QUAL_NONE = "\u0000none";
-  const iA = K.opt[0].idx, iB = K.opt[1].idx;
   const fill = (sel, values, keep, fmt)=>{
     const ph = sel.options[0].textContent;
     sel.innerHTML = ""; sel.appendChild(el("option",{value:""},ph));
     values.forEach(v=> sel.appendChild(el("option",{value:String(v)}, fmt ? fmt(v) : (v===QUAL_NONE ? "(none)" : v))));
     sel.value = values.map(String).includes(String(keep)) ? String(keep) : "";
   };
-  const uniq = (rows, fn)=> Array.from(new Set(rows.map(fn).filter(v=> v!==null && v!==undefined && v!==""))).sort((a,b)=> String(a).localeCompare(String(b),"en",{numeric:true, sensitivity:"base"}));
+  const alpha = (a,b)=> String(a).localeCompare(String(b),"en",{numeric:true, sensitivity:"base"});
+  const uniq = (rows, fn, order)=>{
+    const vals = Array.from(new Set(rows.map(fn).filter(v=> v!==null && v!==undefined && v!=="")));
+    return order ? vals.sort((a,b)=> ((order.indexOf(+a)+1)||99) - ((order.indexOf(+b)+1)||99) || alpha(a,b)) : vals.sort(alpha);
+  };
+  const val = (r, lvl)=> lvl<=N ? r[K.opt[lvl-1].idx] : lvl===N+1 ? r[2] : lvl===N+2 ? r[3] : (r[4]||QUAL_NONE);
   const match = (r, upto)=>{
-    if(upto>=1 && sA.value && String(r[iA])!==sA.value) return false;
-    if(upto>=2 && sB.value && String(r[iB])!==sB.value) return false;
-    if(upto>=3 && sBrand.value && r[2]!==sBrand.value) return false;
-    if(upto>=4 && sModel.value && r[3]!==sModel.value) return false;
-    if(upto>=5 && sQual.value && (r[4]||QUAL_NONE)!==sQual.value) return false;
+    for(let l=1; l<=upto; l++){ const s = sels[l-1]; if(s.value && String(val(r,l))!==s.value) return false; }
     return true;
   };
   function refresh(level){
     const rows = data.rows;
-    if(level<1) fill(sA, uniq(rows, r=>r[iA]), sA.value, K.opt[0].fmt);
-    if(level<2) fill(sB, uniq(rows.filter(r=>match(r,1)), r=>r[iB]), sB.value, K.opt[1].fmt);
-    if(level<3) fill(sBrand, uniq(rows.filter(r=>match(r,2)), r=>r[2]), sBrand.value);
-    if(level<4){ fill(sModel, sBrand.value ? uniq(rows.filter(r=>match(r,3)), r=>r[3]) : [], sModel.value); sModel.disabled = !sBrand.value; }
-    if(level<5){
-      const qs = sModel.value ? Array.from(new Set(rows.filter(r=>match(r,4)).map(r=> r[4] || QUAL_NONE))).sort((a,b)=> String(a).localeCompare(String(b),"en",{numeric:true})) : [];
-      fill(sQual, qs, sQual.value);
-      if(qs.length===1) sQual.value = String(qs[0]);
-      sQual.disabled = !sModel.value;
+    for(let l=level+1; l<=N+3; l++){
+      const s = sels[l-1], pool = rows.filter(r=>match(r,l-1));
+      if(l<=N){ fill(s, uniq(pool, r=>val(r,l), K.opt[l-1].order), s.value, K.opt[l-1].fmt); }
+      else if(l===N+1){ fill(s, uniq(pool, r=>r[2]), s.value); }
+      else if(l===N+2){ fill(s, sBrand.value ? uniq(pool, r=>r[3]) : [], s.value); s.disabled = !sBrand.value; }
+      else { const qs = sModel.value ? uniq(pool, r=> r[4]||QUAL_NONE) : []; fill(s, qs, s.value); if(qs.length===1) s.value = String(qs[0]); s.disabled = !sModel.value; }
     }
-    const hits = rows.filter(r=>match(r,5));
-<<<<<<< HEAD
+    const hits = rows.filter(r=>match(r,N+3));
     lastHits = hits;
     status.textContent = hits.length.toLocaleString("en-GB")+" "+(hits.length===1?K.noun:K.nouns)+" match";
     showLabel(sModel.value && hits.length===1 ? hits[0] : null, hits.length);
@@ -3597,27 +3665,6 @@ function openPcdbFinder(onPick, current, kind){
         el("span",{class:"pcdb-choice-main"}, K.choiceMain(r)),
         el("span",{class:"pcdb-choice-sub"}, K.choiceSub(r)),
         badge ? el("span",{class:"pcdb-choice-eff"}, badge) : null);
-=======
-    status.textContent = hits.length.toLocaleString("en-GB")+" boiler"+(hits.length===1?"":"s")+" match";
-    lastHits = hits;
-    showLabel(sModel.value && hits.length===1 ? hits[0] : null, hits.length);
-  }
-  let lastHits = [];
-  // several boilers still match (e.g. the same model in gas and LPG): list them so one can be picked
-  function showChoices(hits){
-    label.innerHTML = ""; label.classList.add("ready","choices");
-    label.appendChild(el("div",{class:"pcdb-label-head"},
-      el("div",{class:"pcdb-label-kicker"}, hits.length+" boilers match"),
-      el("div",{class:"pcdb-label-name"}, "Pick the right one"),
-      el("div",{class:"pcdb-choice-hint"},"They share a name but differ in fuel, type, output or years – check the data plate.")));
-    const list = el("div",{class:"pcdb-choices"});
-    hits.slice().sort((a,b)=> (a[5]-b[5]) || (a[6]-b[6]) || ((a[8]||0)-(b[8]||0)) || String(a[9]).localeCompare(String(b[9]))).forEach(r=>{
-      const years = (r[9]||"?")+"–"+(r[10]==="current"?"current":(r[10]||"?"));
-      const b = el("button",{type:"button", class:"pcdb-choice"},
-        el("span",{class:"pcdb-choice-main"}, [PCDB_FUEL[r[5]], PCDB_TYPE[r[6]], pcdbOutput(r)].filter(Boolean).join(" · ")),
-        el("span",{class:"pcdb-choice-sub"}, years + (r[11] ? " · "+r[11] : "") + " · PCDB "+r[0]),
-        r[14]!=null ? el("span",{class:"pcdb-choice-eff"}, pcdbPct(r[14])) : null);
->>>>>>> 6036be9ad2cba2e03f342b868219eaeae9e8457d
       b.addEventListener("click", ()=> showLabel(r, hits.length, true));
       list.appendChild(b);
     });
@@ -3631,11 +3678,7 @@ function openPcdbFinder(onPick, current, kind){
       label.appendChild(el("div",{class:"pcdb-label-empty"},
         el("div",{class:"pcdb-label-icon"}, K.icon),
         el("strong",{},"Technical data"),
-<<<<<<< HEAD
         el("p",{}, sModel.value && n>1 ? "Choose a model qualifier (or another filter) to narrow it down." : "Choose the brand and model. The "+K.noun+"'s technical data will appear here.")));
-=======
-        el("p",{}, sModel.value && n>1 ? "Choose a model qualifier (or a fuel or type) to narrow it down." : "Choose the brand and model (and fuel or type if you know them). The boiler's technical data will appear here.")));
->>>>>>> 6036be9ad2cba2e03f342b868219eaeae9e8457d
       return;
     }
     const rev = data.meta && data.meta.revision;
@@ -3647,16 +3690,8 @@ function openPcdbFinder(onPick, current, kind){
     const key = K.key(r);
     if(key) label.appendChild(el("div",{class:"pcdb-label-key"}, el("span",{}, key.label), el("strong",{}, key.value)));
     const tbl = el("dl",{class:"pcdb-label-dl"});
-<<<<<<< HEAD
     K.labelRows(r, rev).forEach(([k,v])=>{
       if(key && k===key.label) return;
-=======
-    if(r[14]!==null && r[14]!==undefined)
-      label.appendChild(el("div",{class:"pcdb-label-key"},
-        el("span",{},"Seasonal efficiency when used in non-domestic buildings"), el("strong",{}, pcdbPct(r[14]))));
-    pcdbLabelRows(r, data.meta && data.meta.revision).forEach(([k,v])=>{
-      if(k==="Seasonal efficiency when used in non-domestic buildings") return;   // shown above
->>>>>>> 6036be9ad2cba2e03f342b868219eaeae9e8457d
       tbl.appendChild(el("dt",{},k)); tbl.appendChild(el("dd",{}, v));
     });
     label.appendChild(tbl);
@@ -3668,25 +3703,21 @@ function openPcdbFinder(onPick, current, kind){
       back.addEventListener("click", ()=> showChoices(lastHits));
       label.appendChild(back);
     }
-<<<<<<< HEAD
     label.appendChild(el("a",{class:"pcdb-label-link", href:K.site, target:"_blank", rel:"noopener"},"Open the PCDB website ↗"));
-=======
-    label.appendChild(el("a",{class:"pcdb-label-link", href:PCDB_SEARCH_PAGE, target:"_blank", rel:"noopener"},"Open the PCDB website ↗"));
->>>>>>> 6036be9ad2cba2e03f342b868219eaeae9e8457d
   }
-  [[sA,1],[sB,2],[sBrand,3],[sModel,4],[sQual,5]].forEach(([s,lvl])=> s.addEventListener("change", ()=> refresh(lvl)));
-  reset.addEventListener("click", ()=>{ [sA,sB,sBrand,sModel,sQual].forEach(s=> s.value=""); refresh(0); });
+  sels.forEach((s,i)=> s.addEventListener("change", ()=> refresh(i+1)));
+  reset.addEventListener("click", ()=>{ sels.forEach(s=> s.value=""); refresh(0); });
 
   pcdbLoadKind(kind).then(d=>{
     data = d;
     // reopening a row that already has a product: start on it
     const r0 = current && d.rows.find(r=>r[0]===current);
+    refresh(0);
     if(r0){
-      refresh(0); sA.value = String(r0[iA]); refresh(1); sB.value = String(r0[iB]); refresh(2);
-      sBrand.value = r0[2]; refresh(3); sModel.value = r0[3]; refresh(4); sQual.value = r0[4] || QUAL_NONE; refresh(5);
+      for(let l=1; l<=N+3; l++){ sels[l-1].value = String(val(r0,l)); refresh(l); }
       if(lastHits.length>1) showLabel(r0, lastHits.length, true);   // several look alike: go straight to the one chosen
-    } else refresh(0);
-    setTimeout(()=>{ const f = r0 ? label.querySelector(".pcdb-use") : sBrand; if(f) f.focus(); }, 0);
+    }
+    setTimeout(()=>{ const f = r0 ? label.querySelector(".pcdb-use") : (N ? opts[0] : sBrand); if(f) f.focus(); }, 0);
   }).catch(()=>{
     status.textContent = "Couldn't load the "+K.noun+" database. It needs a connection the first time it's used, and the form must be opened from its GitHub Pages address.";
     showLabel(null,0);
@@ -3699,16 +3730,26 @@ function pcdbFillRow(tr, key, r, rev, kind){
   const K = PCDB_KINDS[kind];
   const inp = tr.querySelector(`[data-key="${key}"]`);
   const hid = tr.querySelector(`[data-key="${key}__pcdb"]`);
-<<<<<<< HEAD
   if(hid) hid.value = JSON.stringify({kind, rec:r.slice(0,K.keep), rev:rev||null});
   if(inp){ inp.value = K.name(r)+" (PCDB "+r[0]+")"; inp.dataset.pcdbText = inp.value; inp.dispatchEvent(new Event("input",{bubbles:true})); }
-=======
-  if(hid) hid.value = JSON.stringify({rec:r.slice(0,22), rev:rev||null});
-  if(inp){ inp.value = pcdbName(r)+" (PCDB "+r[0]+")"; inp.dataset.pcdbText = inp.value; inp.dispatchEvent(new Event("input",{bubbles:true})); }
->>>>>>> 6036be9ad2cba2e03f342b868219eaeae9e8457d
   const fuelSel = tr.querySelector('[data-key="fuel"]');
   const f = K.formFuel(r);
   if(fuelSel && f && Array.from(fuelSel.options).some(o=>o.value===f)){ fuelSel.value = f; fuelSel.dispatchEvent(new Event("change",{bubbles:true})); }
+  pcdbRenderChip(tr, key);
+}
+/* the small summary under Make Model: PCDB number + efficiency (boilers) or output (heat pumps) */
+function pcdbRenderChip(tr, key){
+  const hid = tr.querySelector(`[data-key="${key}__pcdb"]`), chip = tr.querySelector(".pcdb-chip");
+  if(!hid || !chip) return;
+  let o = null; try{ o = hid.value ? JSON.parse(hid.value) : null; }catch(e){}
+  chip.innerHTML = "";
+  if(!o || !Array.isArray(o.rec)){ chip.style.display = "none"; return; }
+  const K = PCDB_KINDS[o.kind||"boiler"];
+  chip.style.display = "";
+  const change = el("button",{type:"button", class:"pcdb-chip-btn", title:"Choose a different "+K.noun},"Change");
+  change.addEventListener("click", ()=> openPcdbFinder((r,rev,k)=> pcdbFillRow(tr, key, r, rev, k), o.rec[0], o.kind||"boiler"));
+  chip.appendChild(el("span",{class:"pcdb-chip-text"}, (o.kind==="heatpump"?"♨️ ":"🔥 ")+K.chip(o.rec)));
+  chip.appendChild(change);
 }
 /* products chosen from the PCDB in a table, for the site note */
 function pcdbChosen(rows, key){
@@ -4793,7 +4834,7 @@ function collectReport(){
   const s8 = S("Photographs & Sign-off");
   sub(s8,"Photographs Taken");
   checks(s8,"", PHOTO_LABELS.map((l,i)=>({label:l, on:checked("photo_"+i)})));
-  const tbUsed = (typeof tbCollectUsed==="function") ? tbCollectUsed() : [];
+  const tbUsed = (typeof tbStoredUsed==="function" && window.__includeCalcs!==false) ? tbStoredUsed() : [];
   if(tbUsed.length){
     sub(s8,"Supporting Calculations");
     para(s8,"Provided in a separate PDF: "+tbUsed.map(u=>"Tab "+u.tab+" – "+u.title).join("; ")+".");
@@ -5147,8 +5188,15 @@ function askEmailPreference(){
     } else {
       card.appendChild(el("p",{}, email ? "The assessor email address doesn't look valid, so the site note can only be downloaded." : "No assessor email has been set on the Project & Survey tab, so the site note can only be downloaded."));
     }
+    const calcUsed = tbStoredUsed();
+    let calcCb = null;
+    if(calcUsed.length){
+      calcCb = el("input",{type:"checkbox", id:"em-calcs"}); calcCb.checked = true;
+      card.appendChild(el("label",{class:"em-calcs", for:"em-calcs"}, calcCb,
+        el("span",{}, "Also download the Toolbox calculations PDF (", el("strong",{}, calcUsed.map(u=>u.title).join(", ")), ")")));
+    }
     const btns = el("div",{class:"modal-btns"});
-    const close = v => { document.removeEventListener("keydown", onKey); scrim.remove(); resolve(v); };
+    const close = v => { document.removeEventListener("keydown", onKey); scrim.remove(); resolve(v===null ? null : {email:v, calcs: calcCb ? calcCb.checked : false}); };
     const onKey = e => { if(e.key==="Escape") close(null); };
     const cancel = el("button",{class:"btn btn-secondary", type:"button"}, "Cancel");
     cancel.addEventListener("click", ()=> close(null));
@@ -5388,7 +5436,7 @@ async function sendSiteNoteEmail(){
 
   statusEl.innerHTML = "Word document generated ✓ — sending email to " + escapeHtml(assessorEmail) + "…";
 
-  const siteNoteHtml = reportToEmailHtml(collectReport()) + tbUsedToEmailHtml(tbCollectUsed());
+  const siteNoteHtml = reportToEmailHtml(collectReport()) + (window.__includeCalcs===false ? "" : tbUsedToEmailHtml(tbStoredUsed()));
 
   try{
     await emailjs.send(EMAIL_CONFIG.EMAILJS_SERVICE_ID, EMAIL_CONFIG.EMAILJS_TEMPLATE_ID, {
@@ -5407,8 +5455,10 @@ async function sendSiteNoteEmail(){
 
 document.getElementById("btn-generate").addEventListener("click", async ()=>{
   const statusEl = document.getElementById("status-text");
-  const wantEmail = await askEmailPreference();
-  if(wantEmail===null) return;                       // cancelled
+  const choice = await askEmailPreference();
+  if(choice===null) return;                          // cancelled
+  const wantEmail = choice.email;
+  window.__includeCalcs = choice.calcs;
 
   statusEl.innerHTML = "Building Word document…";
   const R = buildPrintSheet();
@@ -5440,8 +5490,8 @@ document.getElementById("btn-generate").addEventListener("click", async ()=>{
   if(done && statusEl.innerHTML.indexOf("basic layout")<0)
     statusEl.innerHTML = 'Word document generated <span>✓</span> — check your downloads folder';
 
-  // Calculations PDF – only the toolbox calculators that were used
-  const used = tbCollectUsed();
+  // Calculations PDF – only the toolbox calculators that were used (saved by the Toolbox tab)
+  const used = choice.calcs ? tbStoredUsed() : [];
   if(done && used.length){
     try{
       const pdf = await tbBuildPdf(used, R.meta);
@@ -5458,7 +5508,7 @@ document.getElementById("btn-generate").addEventListener("click", async ()=>{
 
 document.getElementById("btn-clear").addEventListener("click", ()=>{
   if(!confirm("Clear all entered data on this form? This cannot be undone.")) return;
-  tbResetAll();
+  try{ localStorage.removeItem(TB_KEY_USED); localStorage.setItem(TB_KEY_RESET, String(Date.now())); }catch(e){}
   document.querySelectorAll("input[type=text], input[type=date], input[type=number], textarea").forEach(i=> i.value="");
   document.querySelectorAll("select").forEach(s=> s.value="");
   document.querySelectorAll("input[type=checkbox]").forEach(c=> c.checked=false);
