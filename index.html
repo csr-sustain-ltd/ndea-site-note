@@ -9,7 +9,7 @@
 
 <!-- Build stamp. INCREMENT THIS ON EVERY DEPLOYMENT (YYYY-MM-DD-NN).
      The freshness check below reads it, so it lives in exactly one place. -->
-<meta name="build-version" content="2026-10-14-01">
+<meta name="build-version" content="2026-10-15-01">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -593,6 +593,39 @@ body.fp-open{overflow:hidden;padding:0 !important;background:#E2E8F0;}
   .fp-bb{padding:8px 10px;}
 }
 
+/* ---------- Mark Up / job details ---------- */
+.mu-top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px;}
+.mu-import{font:inherit;font-size:15px;font-weight:700;color:#fff;background:var(--primary-color);border:none;border-radius:10px;padding:11px 18px;cursor:pointer;}
+.mu-import small{font-weight:500;opacity:.85;}
+.mu-import:hover{background:var(--primary-hover);}
+.mu-att{display:flex;align-items:center;gap:12px;background:#ECFEFF;border:1px solid #A5F3FC;border-radius:10px;padding:8px 12px;margin-bottom:14px;}
+.mu-thumb img{width:56px;height:72px;object-fit:cover;border-radius:6px;border:1px solid var(--border-color);display:block;background:#fff;}
+.mu-attinfo{display:flex;flex-direction:column;gap:3px;align-items:flex-start;font-size:13px;}
+.mu-attinfo span{color:var(--muted);font-size:12.5px;}
+.mu-areacheck{margin-top:10px;font-size:13.5px;font-weight:600;border-radius:8px;padding:8px 12px;}
+.mu-areacheck.ok{background:#DCFCE7;color:#14532D;}
+.mu-areacheck.bad{background:#FEF3C7;color:#92400E;}
+.mu-banner{display:flex;align-items:center;gap:8px 16px;flex-wrap:wrap;background:#FEF3C7;border:1px solid #FCD34D;color:#78350F;border-radius:10px;padding:9px 14px;margin:0 0 12px;font-size:14px;}
+.mu-banner b{font-weight:700;}
+.mu-pin{font-size:16px;}
+.mu-card{max-width:min(900px,96vw);width:96vw;}
+.mu-sub{font-size:13.5px !important;color:var(--muted) !important;margin-bottom:14px !important;}
+.mu-progress{height:8px;background:#E2E8F0;border-radius:999px;overflow:hidden;margin-bottom:6px;}
+.mu-progress span{display:block;height:100%;width:3%;background:var(--primary-color);transition:width .3s;}
+.mu-body{display:grid;grid-template-columns:1fr 220px;gap:18px;align-items:start;max-height:62vh;overflow-y:auto;}
+.mu-grid{display:flex;flex-direction:column;gap:8px;}
+.mu-row{display:grid;grid-template-columns:170px 1fr;gap:10px;align-items:start;}
+.mu-lab{font-size:13.5px;font-weight:600;padding-top:9px;}
+.mu-val{display:flex;flex-direction:column;gap:3px;}
+.mu-in{font:inherit;font-size:15px;padding:8px 10px;border:1px solid var(--border-color);border-radius:8px;width:100%;box-sizing:border-box;}
+.mu-in.empty{background:#F8FAFC;}
+.mu-in.warn{border-color:#F59E0B;background:#FFFBEB;}
+.mu-replace{font-size:11.5px;color:#B45309;}
+.mu-missing{font-size:11.5px;color:var(--muted);}
+.mu-preview img{width:100%;border:1px solid var(--border-color);border-radius:8px;display:block;}
+.mu-attach{margin:14px 0 16px !important;}
+@media(max-width:700px){ .mu-body{grid-template-columns:1fr;} .mu-preview{display:none;} .mu-row{grid-template-columns:1fr;gap:3px;} .mu-lab{padding-top:0;} }
+
 /* EPC band badge + "This survey" panel */
 /* optional-section switch */
 .opt-switch{display:flex;align-items:center;gap:14px;cursor:pointer;user-select:none;}
@@ -1135,6 +1168,7 @@ input.epc-masked{color:transparent !important;text-shadow:0 0 9px rgba(30,41,59,
     </a>
   </div>
 
+  <div class="mu-banner" id="mu_banner" style="display:none;"></div>
   <div class="tabs" id="tabs"></div>
 
   <div class="wrap" id="panels"></div>
@@ -2007,6 +2041,7 @@ function buildProjectPanel(){
     ));
   });
   panel.appendChild(section("Photograph Checklist","",photoBody));
+  panel.insertBefore(buildMarkupSection(), panel.firstChild);
 
   return panel;
 }
@@ -4444,6 +4479,334 @@ function fpLoadPdfJs(){
 }
 if(FP_TAB) setTimeout(fpStartEditor, 0);
 
+/* ==========================================================================
+   MARK UP (job instruction from the office)
+   "Import Mark Up" reads a PDF, scan or photo of the Mark Up and fills the job
+   details. Text PDFs are read directly; scans and photos go through text
+   recognition (Tesseract OCR, loaded on demand). The assessor always checks the
+   result before it's applied. The Mark Up itself can be attached to the end of
+   the Word site note.
+   ========================================================================== */
+const TESSERACT_URL = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
+const MU_KEY = "markup";
+const MU_LABELS = [
+  ["ref",     /\bref(?:erence)?\s*(?:no\.?|number)?\s*[:.]?/i],
+  ["name",    /\bname\s*[:;.]/i],
+  ["address", /\baddress\s*[:;.]/i],
+  ["email",   /\bclient.{0,3}s?\s*e\s*-?\s*mail\s*[:;.]?|\be\s*-?\s*mail\s*[:;.]/i],
+  ["date",    /\bappointment\s*date\s*[:;.]?/i],
+  ["other",   /\bother\s*info(?:rmation)?\s*[:;.]?/i],
+  ["area",    /\bfloor\s*area\s*[:;.]?/i]
+];
+const MU_POSTCODE = /\b([A-Z]{1,2}\d[A-Z\d]?)\s*(\d[A-Z]{2})\b/i;
+
+/* ---------- reading the layout ----------
+   Works on "segments" (a run of text with its box), from either the PDF text
+   layer or OCR. Labels are in a left column and values to their right, so each
+   label takes the text to its right, down to the next label. */
+function muParse(segs){
+  segs = segs.filter(s=> s.text && s.text.trim()).map(s=> Object.assign({}, s, {text:s.text.replace(/\s+/g," ").trim()}));
+  const labels = [];
+  segs.forEach(s=>{
+    MU_LABELS.forEach(([key, re])=>{
+      const m = s.text.match(re);
+      if(!m) return;
+      if(key!=="ref" && m.index > 3) return;                 // field labels start their line
+      if(labels.some(l=> l.key===key)) return;
+      const before = s.text.slice(0, m.index).trim(), after = s.text.slice(m.index + m[0].length).trim();
+      labels.push({key, seg:s, before, after});
+    });
+  });
+  labels.sort((a,b)=> a.seg.y0 - b.seg.y0);
+  const isLabel = s=> labels.some(l=> l.seg===s);
+  const lineH = segs.length ? segs.map(s=> s.y1-s.y0).sort((a,b)=>a-b)[Math.floor(segs.length/2)] : 12;
+  const out = {};
+  labels.forEach((l,i)=>{
+    const next = labels.slice(i+1).find(n=> n.seg.y0 > l.seg.y0 + lineH*0.6);
+    const top = l.seg.y0 - lineH*0.6, bottom = next ? next.seg.y0 - lineH*0.4 : l.seg.y1 + lineH*5;
+    const parts = [];
+    if(l.after) parts.push({y:l.seg.y0, text:l.after});
+    segs.forEach(s=>{
+      if(s===l.seg || isLabel(s)) return;
+      const cy = (s.y0+s.y1)/2;
+      if(cy < top || cy > bottom) return;
+      if(s.x0 < l.seg.x0 + 15) return;                        // values sit to the right of the label
+      if(l.key==="ref" && s.x0 < l.seg.x1 - 5) return;
+      parts.push({y:cy, x:s.x0, text:s.text});
+    });
+    parts.sort((a,b)=> (a.y-b.y) || ((a.x||0)-(b.x||0)));
+    let before = l.before;
+    if(l.key==="ref" && !before){
+      // job type printed separately to the left of "Ref:" on the same line
+      const cy = (l.seg.y0+l.seg.y1)/2;
+      before = segs.filter(s=> s!==l.seg && Math.abs((s.y0+s.y1)/2 - cy) < lineH*0.6 && s.x1 <= l.seg.x0 + 2).sort((a,b)=>a.x0-b.x0).map(s=>s.text).join(" ");
+    }
+    out[l.key] = {lines: parts.map(p=>p.text), before};
+  });
+  return muFields(out, segs.map(s=>s.text).join("\n"));
+}
+/* turns the raw label values into form fields */
+function muFields(raw, allText){
+  const f = {};
+  const one = k=> raw[k] ? raw[k].lines.join(" ").trim() : "";
+  const clean = t=> String(t||"").replace(/^[‘'"`,.\s~\-–—]+|[‘'"`,\s~\-–—]+$/g,"").trim();
+  // job type and reference, e.g. "Commercial EPC   Ref: CLIF203"
+  if(raw.ref){
+    const r = clean(one("ref")).split(/\s+/)[0] || "";
+    if(r) f.jobref = r.toUpperCase();
+    if(raw.ref.before) f.jobtype = clean(raw.ref.before);
+  }
+  // "Ben Riley – Next Chapter Healthcare Ltd" -> contact and company
+  const nm = clean(one("name"));
+  if(nm){
+    const p = nm.split(/\s+[~–—-]\s+|\s*[–—]\s*/);
+    f.customer = clean(p[0]);
+    if(p.length>1) f.company = clean(p.slice(1).join(" – "));
+  }
+  // address lines; the postcode is pulled out wherever it is
+  if(raw.address){
+    const lines = raw.address.lines.map(clean).filter(Boolean);
+    let pc = "";
+    const rest = [];
+    lines.forEach(ln=>{
+      const m = ln.match(MU_POSTCODE);
+      if(m && !pc){ pc = (m[1]+" "+m[2]).toUpperCase(); const left = clean(ln.replace(m[0],"")); if(left) rest.push(left); }
+      else rest.push(ln);
+    });
+    // no valid postcode read (e.g. a misread character): take a postcode-like last line for the assessor to correct
+    if(!pc && rest.length>1 && /^[A-Z]{1,2}\d[A-Z\d]?\s*\d?[A-Z]{0,2}$/i.test(rest[rest.length-1])) f.postcodeRaw = rest.pop().toUpperCase();
+    if(rest.length) f.address = rest.join(", ");
+    if(pc) f.postcode = pc;
+  }
+  const em = (one("email") + " " + allText).match(/[A-Z0-9._%+'-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+  if(em) f.email = em[0].replace(/[.,]+$/,"").toLowerCase();
+  const dt = one("date").match(/(\d{1,2})\s*[\/.\-]\s*(\d{1,2})\s*[\/.\-]\s*(\d{2,4})/);
+  if(dt){
+    let y = +dt[3]; if(y<100) y += 2000;
+    const d = +dt[1], m = +dt[2];
+    if(m>=1 && m<=12 && d>=1 && d<=31) f.date = y+"-"+String(m).padStart(2,"0")+"-"+String(d).padStart(2,"0");
+  }
+  const other = clean(one("other"));
+  if(other){
+    // arrival time(s) at the start, e.g. "2.00/2.30 pm - Please ask for Mick on arrival"
+    const tm = other.match(/^((?:\d{1,2}[.:]\d{2}|\d{1,2})(?:\s*(?:am|pm))?(?:\s*(?:\/|-|–|to|or)\s*(?:\d{1,2}[.:]\d{2}|\d{1,2}))?\s*(?:am|pm)?)\s*[-–—,:]?\s*(.*)$/i);
+    if(tm && /\d/.test(tm[1]) && /[.:]|am|pm/i.test(tm[1])){ f.arrival = clean(tm[1]); if(clean(tm[2])) f.onsite = clean(tm[2]); }
+    else f.onsite = other;
+  }
+  const ar = one("area").match(/(\d[\d,]*(?:\.\d+)?)/);
+  if(ar) f.area = ar[1].replace(/,/g,"");
+  return f;
+}
+
+/* ---------- getting text out of the file ---------- */
+async function muFileToPages(file){
+  const pages = [];
+  if(/pdf$/i.test(file.type) || /\.pdf$/i.test(file.name)){
+    const lib = await fpLoadPdfJs();
+    const doc = await lib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;
+    for(let i=1; i<=Math.min(doc.numPages, 4); i++){
+      const pg = await doc.getPage(i), v1 = pg.getViewport({scale:1}), sc = 1800/Math.max(v1.width, v1.height);
+      const vp = pg.getViewport({scale:sc}), c = document.createElement("canvas");
+      c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+      const cx = c.getContext("2d"); cx.fillStyle = "#fff"; cx.fillRect(0,0,c.width,c.height);
+      await pg.render({canvasContext:cx, viewport:vp}).promise;
+      // the PDF's own text layer, positioned like the page image
+      const tc = await pg.getTextContent(), segs = [];
+      tc.items.forEach(it=>{
+        if(!it.str || !it.str.trim()) return;
+        const t = lib.Util.transform(vp.transform, it.transform), h = Math.hypot(t[2], t[3]) || 12;
+        segs.push({text:it.str, x0:t[4], y0:t[5]-h, x1:t[4]+it.width*sc, y1:t[5]});
+      });
+      pages.push({canvas:c, src:c.toDataURL("image/jpeg", 0.85), w:c.width, h:c.height, segs:muMergeSegs(segs)});
+    }
+  } else {
+    const src = await new Promise((res,rej)=>{ const r = new FileReader(); r.onload = ()=> res(r.result); r.onerror = rej; r.readAsDataURL(file); });
+    const im = await fpImageReady(src); if(!im) throw new Error("That image couldn't be opened.");
+    // scale to ~2000px: small screenshots read far better enlarged, big photos faster reduced
+    const k = 2000/Math.max(im.naturalWidth, im.naturalHeight), c = document.createElement("canvas");
+    c.width = Math.round(im.naturalWidth*k); c.height = Math.round(im.naturalHeight*k);
+    const cx = c.getContext("2d"); cx.fillStyle = "#fff"; cx.fillRect(0,0,c.width,c.height); cx.drawImage(im, 0, 0, c.width, c.height);
+    pages.push({canvas:c, src:c.toDataURL("image/jpeg", 0.85), w:c.width, h:c.height, segs:[]});
+  }
+  return pages;
+}
+/* joins PDF text pieces that sit next to each other on one line; keeps big gaps (label | value) apart */
+function muMergeSegs(segs){
+  segs.sort((a,b)=> (a.y0-b.y0) || (a.x0-b.x0));
+  const out = [];
+  segs.forEach(s=>{
+    const h = s.y1-s.y0, last = out[out.length-1];
+    if(last && Math.abs(last.y0 - s.y0) < h*0.5 && s.x0 - last.x1 < h*1.2){
+      last.text += (s.x0 - last.x1 > h*0.15 ? " " : "") + s.text; last.x1 = Math.max(last.x1, s.x1); last.y1 = Math.max(last.y1, s.y1);
+    } else out.push(Object.assign({}, s));
+  });
+  return out;
+}
+let tessPromise = null;
+function muLoadTesseract(){
+  if(window.Tesseract) return Promise.resolve(window.Tesseract);
+  if(!tessPromise) tessPromise = tbLoadScript(TESSERACT_URL).then(()=>{ if(!window.Tesseract) throw new Error("OCR did not load"); return window.Tesseract; }).catch(e=>{ tessPromise = null; throw e; });
+  return tessPromise;
+}
+async function muOcr(canvas, onProgress){
+  const T = await muLoadTesseract();
+  const worker = await T.createWorker("eng", 1, {logger: m=>{ if(m.status==="recognizing text" && onProgress) onProgress(m.progress); }});
+  try{
+    const {data} = await worker.recognize(canvas);
+    return (data.lines||[]).map(l=> ({text:l.text, x0:l.bbox.x0, y0:l.bbox.y0, x1:l.bbox.x1, y1:l.bbox.y1}));
+  } finally { worker.terminate(); }
+}
+
+/* ---------- the Job details block on the Project & Survey tab ---------- */
+const MU_FIELDS = [
+  ["jobref","Job reference","p_jobref"], ["jobtype","Job type","p_jobtype"], ["customer","Customer contact name","p_customer"],
+  ["company","Company","p_company"], ["address","Site address","p_address"], ["postcode","Postcode","p_postcode"],
+  ["email","Customer email","p_email"], ["date","Date of inspection","p_date"], ["arrival","Arrival time","p_arrival"],
+  ["onsite","On-site notes","p_onsite"], ["area","Floor area (Mark Up)","p_markup_area"]
+];
+function buildMarkupSection(){
+  const body = el("div");
+  const imp = el("button",{type:"button", class:"mu-import"}, "📥 Import Mark Up", el("small",{}," PDF, scan or photo"));
+  const fileIn = el("input",{type:"file", accept:"application/pdf,image/*", style:"display:none;"});
+  const att = el("div",{class:"mu-att", id:"mu_att", style:"display:none;"});
+  imp.addEventListener("click", ()=> fileIn.click());
+  fileIn.addEventListener("change", ()=>{ const f = fileIn.files && fileIn.files[0]; fileIn.value = ""; if(f) muImport(f); });
+  body.appendChild(el("div",{class:"mu-top"}, imp, el("span",{class:"hint"},"Reads the office's Mark Up and fills in the job details for you to check."), fileIn));
+  body.appendChild(att);
+  const g = el("div",{class:"grid2"});
+  g.appendChild(field("Job reference", textInput("p_jobref","e.g. CLIF203")));
+  g.appendChild(field("Job type", textInput("p_jobtype","e.g. Commercial EPC")));
+  g.appendChild(field("Company", textInput("p_company")));
+  g.appendChild(field("Arrival time", textInput("p_arrival","e.g. 2.00/2.30 pm")));
+  g.appendChild(field("On-site notes", textInput("p_onsite","e.g. Please ask for Mick on arrival")));
+  const area = el("input",{type:"number", id:"p_markup_area", step:"any", placeholder:"m²", autocomplete:"off"});
+  g.appendChild(field("Floor area from Mark Up (m²)", area, false, "Checked against the modelled floor area"));
+  body.appendChild(g);
+  body.appendChild(el("div",{id:"mu_areacheck", class:"mu-areacheck", style:"display:none;"}));
+  setTimeout(()=>{ muRenderAttachment(); muSync(); }, 0);
+  return section("Job Details (Mark Up)", "", body);
+}
+/* arrival / contact reminder banner, and the floor-area check */
+function muSync(){
+  const b = document.getElementById("mu_banner");
+  if(b){
+    const parts = [];
+    if(val("p_jobref")) parts.push(["Job", val("p_jobref")]);
+    if(val("p_arrival")) parts.push(["Arrive", val("p_arrival")]);
+    if(val("p_onsite")) parts.push(["", val("p_onsite")]);
+    b.innerHTML = "";
+    if(parts.length){
+      b.appendChild(el("span",{class:"mu-pin"},"📍"));
+      parts.forEach(([k,v])=> b.appendChild(el("span",{class:"mu-bitem"}, k ? el("b",{},k+" ") : null, v)));
+      b.style.display = "";
+    } else b.style.display = "none";
+  }
+  const c = document.getElementById("mu_areacheck");
+  if(c){
+    const mu = parseFloat(val("p_markup_area")), mod = parseFloat(val("epc_new_area"));
+    if(mu>0 && mod>0){
+      const pct = (mod-mu)/mu*100, bad = Math.abs(pct) > 10;
+      c.className = "mu-areacheck "+(bad?"bad":"ok");
+      c.textContent = (bad?"⚠ ":"✓ ")+"Modelled floor area "+mod+" m² is "+(pct>=0?"+":"")+pct.toFixed(1)+"% against the Mark Up ("+mu+" m²)"+(bad?" – check before finalising.":".");
+      c.style.display = "";
+    } else c.style.display = "none";
+  }
+}
+document.addEventListener("input", e=>{ if(e.target && /^(p_jobref|p_arrival|p_onsite|p_markup_area|epc_new_area)$/.test(e.target.id||"")) muSync(); });
+
+/* the attached Mark Up (kept in the browser until Clear Form) */
+async function muRenderAttachment(){
+  const box = document.getElementById("mu_att"); if(!box) return;
+  let d = null; try{ d = await idbGet(MU_KEY); }catch(e){}
+  box.innerHTML = "";
+  if(!d || !d.pages || !d.pages.length){ box.style.display = "none"; return; }
+  box.style.display = "";
+  const rm = el("button",{type:"button", class:"pcdb-chip-btn"},"Remove");
+  rm.addEventListener("click", async ()=>{ try{ await idbDel(MU_KEY); }catch(e){} muRenderAttachment(); });
+  const view = el("a",{href:d.pages[0].src, target:"_blank", rel:"noopener", class:"mu-thumb"}, el("img",{src:d.pages[0].src, alt:"Mark Up"}));
+  box.appendChild(view);
+  box.appendChild(el("div",{class:"mu-attinfo"}, el("strong",{},"📎 Mark Up attached"), el("span",{}, (d.name||"Mark Up")+" · "+d.pages.length+" page"+(d.pages.length>1?"s":"")+" · added to the end of the Word site note"), rm));
+}
+async function muLoadAttachment(){ try{ const d = await idbGet(MU_KEY); return (d && d.pages) ? d.pages : []; }catch(e){ return []; } }
+
+/* ---------- import flow ---------- */
+async function muImport(file){
+  const scrim = el("div",{class:"modal-scrim"});
+  const card = el("div",{class:"modal-card mu-card"});
+  const msg = el("p",{},"Opening the Mark Up…");
+  const bar = el("div",{class:"mu-progress"}, el("span",{}));
+  card.appendChild(el("h3",{},"Reading the Mark Up"));
+  card.appendChild(msg); card.appendChild(bar);
+  scrim.appendChild(card); document.body.appendChild(scrim);
+  const setP = p=>{ bar.firstChild.style.width = Math.round(p*100)+"%"; };
+  try{
+    const pages = await muFileToPages(file);
+    let segs = pages[0].segs, method = "text";
+    if(segs.map(s=>s.text).join("").replace(/\s/g,"").length < 25){
+      method = "ocr";
+      msg.textContent = "Recognising the text – this takes 10–20 seconds the first time…";
+      setP(0.05);
+      segs = await muOcr(pages[0].canvas, p=> setP(0.1 + p*0.9));
+    }
+    setP(1);
+    const f = muParse(segs);
+    scrim.remove();
+    muReview(f, pages, file.name, method);
+  }catch(err){
+    console.warn(err);
+    card.innerHTML = "";
+    card.appendChild(el("h3",{},"Couldn't read the Mark Up"));
+    card.appendChild(el("p",{}, "The file couldn't be read. Text recognition needs a connection the first time it's used. You can still type the job details in by hand."));
+    const ok = el("button",{type:"button", class:"btn btn-primary"},"OK"); ok.addEventListener("click", ()=> scrim.remove());
+    card.appendChild(el("div",{class:"modal-btns"}, ok));
+  }
+}
+function muReview(f, pages, name, method){
+  const scrim = el("div",{class:"modal-scrim"});
+  const card = el("div",{class:"modal-card mu-card mu-review"});
+  card.appendChild(el("h3",{},"Check the job details"));
+  card.appendChild(el("p",{class:"mu-sub"}, method==="ocr"
+    ? "Read with text recognition from a scan/photo – please check each value against the Mark Up, especially the postcode and email."
+    : "Read from the PDF's text. Please check before filling in the form."));
+  const grid = el("div",{class:"mu-grid"});
+  const inputs = {};
+  MU_FIELDS.forEach(([k,label,id])=>{
+    let v = f[k] || "";
+    const inp = el("input",{type: k==="date" ? "date" : "text", class:"mu-in"+(v?"":" empty"), value:v});
+    if(k==="postcode" && !v && f.postcodeRaw){ inp.value = f.postcodeRaw; inp.classList.add("warn"); }
+    inputs[k] = inp;
+    const cur = val(id);
+    const note = (cur && v && cur!==v) ? el("small",{class:"mu-replace"},"Replaces: "+cur) : (!v ? el("small",{class:"mu-missing"},"Not found – type it in or leave blank") : null);
+    if(k==="postcode") inp.addEventListener("input", ()=> inp.classList.toggle("warn", !!inp.value && !MU_POSTCODE.test(inp.value)));
+    if(k==="postcode" && inp.value && !MU_POSTCODE.test(inp.value)) inp.classList.add("warn");
+    grid.appendChild(el("label",{class:"mu-row"}, el("span",{class:"mu-lab"},label), el("span",{class:"mu-val"}, inp, note)));
+  });
+  const prev = el("a",{class:"mu-preview", href:pages[0].src, target:"_blank", rel:"noopener", title:"Open full size"}, el("img",{src:pages[0].src, alt:"Mark Up"}));
+  card.appendChild(el("div",{class:"mu-body"}, grid, prev));
+  const attCb = el("input",{type:"checkbox", id:"mu_attach"}); attCb.checked = true;
+  card.appendChild(el("label",{class:"em-calcs mu-attach", for:"mu_attach"}, attCb, el("span",{},"Attach this Mark Up to the end of the Word site note")));
+  const cancel = el("button",{type:"button", class:"btn btn-secondary"},"Cancel");
+  const apply = el("button",{type:"button", class:"btn btn-primary"},"Fill in the form ✓");
+  card.appendChild(el("div",{class:"modal-btns"}, cancel, apply));
+  scrim.appendChild(card); document.body.appendChild(scrim);
+  cancel.addEventListener("click", ()=> scrim.remove());
+  apply.addEventListener("click", async ()=>{
+    MU_FIELDS.forEach(([k,,id])=>{
+      const v = inputs[k].value.trim(), e = document.getElementById(id);
+      if(!v || !e) return;
+      e.value = (k==="postcode") ? v.toUpperCase() : v;
+      e.dispatchEvent(new Event("input",{bubbles:true}));
+      e.dispatchEvent(new Event("change",{bubbles:true}));
+    });
+    if(attCb.checked){
+      try{ await idbSet(MU_KEY, {name, t:Date.now(), pages:pages.map(p=>({src:p.src, w:p.w, h:p.h}))}); }catch(e){}
+    }
+    scrim.remove();
+    muRenderAttachment(); muSync();
+    const s = document.getElementById("status-text"); if(s) s.textContent = "Job details filled in from the Mark Up – please check them";
+  });
+}
+
 const LIGHT_CONTROLS = ["Manual switching only","Occupancy sensors","Dimming","Manual on, auto off","Time control to display lighting","Other"];
 function lampChecklist(prefix){
   const wrap = el("div");
@@ -5375,8 +5738,8 @@ function collectReport(){
       address: dash(val("p_address")), postcode: dash(val("p_postcode")),
       assessor: dash(val("p_assessor")), membership: dash(val("p_membership")),
       assessorEmail: dash(val("p_assessor_email")), date: dash(val("p_date")),
-      level: dash(val("p_level")), use: dash(val("p_use")), customer: dash(val("p_customer")),
-      riskDone: checked("p_risk_done"), generated: new Date().toLocaleDateString("en-GB"),
+      level: dash(val("p_level")), use: dash(val("p_use")), customer: [dash(val("p_customer")), dash(val("p_company"))].filter(Boolean).join(" – "),
+      riskDone: checked("p_risk_done"), generated: new Date().toLocaleDateString("en-GB"), jobref: dash(val("p_jobref")),
       signature: (currentAssessor()||{}).sig || ""
     },
     sections: []
@@ -5396,8 +5759,14 @@ function collectReport(){
   sub(s1,"Site & Assessor");
   kv(s1,[["Site address",R.meta.address],["Postcode",R.meta.postcode],["Date of inspection",R.meta.dateFmt],["Assessment level",R.meta.level],
          ["Assessor",R.meta.assessor],["Membership no.",R.meta.membership],["Assessor email",R.meta.assessorEmail],["Weather location",val("p_weather")]]);
+  if(["p_jobref","p_jobtype","p_arrival","p_onsite","p_markup_area"].some(id=> val(id))){
+    sub(s1,"Job Details (Mark Up)");
+    const mu = parseFloat(val("p_markup_area")), mod = parseFloat(val("epc_new_area"));
+    const areaTxt = val("p_markup_area") ? val("p_markup_area")+" m²"+((mu>0 && mod>0) ? "  (modelled "+mod+" m², "+((mod-mu)/mu*100>=0?"+":"")+((mod-mu)/mu*100).toFixed(1)+"%)" : "") : "";
+    kv(s1,[["Job reference",val("p_jobref")],["Job type",val("p_jobtype")],["Arrival time",val("p_arrival")],["On-site notes",val("p_onsite")],["Floor area (Mark Up)",areaTxt]]);
+  }
   sub(s1,"Customer");
-  kv(s1,[["Contact name",val("p_customer")],["Phone",val("p_phone")],["Email",val("p_email")]]);
+  kv(s1,[["Contact name",val("p_customer")],["Company",val("p_company")],["Phone",val("p_phone")],["Email",val("p_email")]]);
   sub(s1,"Building");
   const ext = val("p_has_ext");
   const bPairs = [["Building use",val("p_use")],["Building age",val("p_age")],["Number of floors",val("p_floors")],["Occupancy",radioVal("occupancy")],
@@ -5520,6 +5889,11 @@ function collectReport(){
     para(s8,"Provided in a separate PDF: "+tbUsed.map(u=>"Tab "+u.tab+" – "+u.title).join("; ")+".");
   }
   s8.blocks.push({t:"sign"});
+  const muPages = window.__markupPages || [];
+  if(muPages.length){
+    const sm = S("Mark Up (Job Instruction)");
+    muPages.forEach((pg,i)=> sm.blocks.push({t:"image", title: muPages.length>1 ? "Mark Up – page "+(i+1) : "Mark Up as issued by the office", src:pg.src, w:pg.w, h:pg.h, first:i===0}));
+  }
   return R;
 }
 
@@ -5781,6 +6155,7 @@ async function reportToDocxBlob(R){
   if(R.meta.postcode) cover.push(P(run(R.meta.postcode,{size:26,color:GREY}),{after:0}));
   cover.push(P(run(" "),{after:360, border:{bottom:{style:BorderStyle.SINGLE,size:18,color:TEAL,space:8}}}));
   const cRows = [
+    ...(R.meta.jobref ? [["Job reference", R.meta.jobref]] : []),
     ["Date of inspection", R.meta.dateFmt], ["Assessment level", R.meta.level], ["Building use", R.meta.use],
     ["Customer", R.meta.customer], ["Assessor", R.meta.assessor + (R.meta.membership ? "  ("+R.meta.membership+")" : "")],
     ["Risk assessment", R.meta.riskDone ? "Completed" : "NOT RECORDED"], ["Site note generated", R.meta.generated]
@@ -5830,7 +6205,7 @@ async function reportToDocxBlob(R){
     spacing:{after:0},
     children:[
       new ImageRun({data:icon.data, type:"png", transformation:{width:Math.round(hdrIconH*iconSz.w/iconSz.h), height:hdrIconH}}),
-      new TextRun({text:"\tSite Note  |  "+(R.meta.address||"")+(R.meta.postcode?", "+R.meta.postcode:""), font:FONT, size:15, color:GREY})
+      new TextRun({text:"\tSite Note"+(R.meta.jobref ? " "+R.meta.jobref : "")+"  |  "+(R.meta.address||"")+(R.meta.postcode?", "+R.meta.postcode:""), font:FONT, size:15, color:GREY})
     ]})]});
   const footer = new Footer({children:[ new Paragraph({
     tabStops:[{type:TabStopType.RIGHT, position:W}],
@@ -5868,7 +6243,7 @@ async function reportToDocxBlob(R){
 }
 
 /* ---------- "Email me a copy?" prompt ---------- */
-function askEmailPreference(planCount){
+function askEmailPreference(planCount, markupCount){
   return new Promise(resolve=>{
     const email = (val("p_assessor_email")||"").trim();
     const ok = EMAIL_CONFIG.EMAIL_ENABLED && isValidEmail(email);
@@ -5893,8 +6268,14 @@ function askEmailPreference(planCount){
       card.appendChild(el("label",{class:"em-calcs em-plans", for:"em-plans"}, planCb,
         el("span",{}, "Add the floor plan to the Word site note (", el("strong",{}, planCount+" page"+(planCount>1?"s":"")), ")")));
     }
+    let muCb = null;
+    if(markupCount){
+      muCb = el("input",{type:"checkbox", id:"em-markup"}); muCb.checked = true;
+      card.appendChild(el("label",{class:"em-calcs em-plans", for:"em-markup"}, muCb,
+        el("span",{}, "Attach the Mark Up to the end of the Word site note")));
+    }
     const btns = el("div",{class:"modal-btns"});
-    const close = v => { document.removeEventListener("keydown", onKey); scrim.remove(); resolve(v===null ? null : {email:v, calcs: calcCb ? calcCb.checked : false, plans: planCb ? planCb.checked : false}); };
+    const close = v => { document.removeEventListener("keydown", onKey); scrim.remove(); resolve(v===null ? null : {email:v, calcs: calcCb ? calcCb.checked : false, plans: planCb ? planCb.checked : false, markup: muCb ? muCb.checked : false}); };
     const onKey = e => { if(e.key==="Escape") close(null); };
     const cancel = el("button",{class:"btn btn-secondary", type:"button"}, "Cancel");
     cancel.addEventListener("click", ()=> close(null));
@@ -6154,11 +6535,13 @@ async function sendSiteNoteEmail(){
 document.getElementById("btn-generate").addEventListener("click", async ()=>{
   const statusEl = document.getElementById("status-text");
   const fpPages = await fpLoadPlans();
-  const choice = await askEmailPreference(fpPages.length);
+  const muAtt = await muLoadAttachment();
+  const choice = await askEmailPreference(fpPages.length, muAtt.length);
   if(choice===null) return;                          // cancelled
   const wantEmail = choice.email;
   window.__includeCalcs = choice.calcs;
   window.__floorPlans = [];
+  window.__markupPages = choice.markup ? muAtt : [];
   if(choice.plans){ statusEl.innerHTML = "Adding floor plans…"; try{ window.__floorPlans = await fpExportAll(); }catch(e){ console.warn("floor plans", e); } }
 
   statusEl.innerHTML = "Building Word document…";
@@ -6169,7 +6552,7 @@ document.getElementById("btn-generate").addEventListener("click", async ()=>{
   let done = false;
   try{
     const blob = await reportToDocxBlob(R);
-    downloadBlob(blob, `NDEA_Site_Note_${addr}_${dateStr}.docx`);
+    downloadBlob(blob, `NDEA_Site_Note_${R.meta.jobref ? R.meta.jobref.replace(/[^a-z0-9]+/gi,"")+"_" : ""}${addr}_${dateStr}.docx`);
     done = true;
   }catch(err){
     // Fallback if the Word library can't be loaded (e.g. no signal): legacy .doc export
@@ -6211,6 +6594,7 @@ document.getElementById("btn-clear").addEventListener("click", ()=>{
   if(!confirm("Clear all entered data on this form? This cannot be undone.")) return;
   try{ localStorage.removeItem(TB_KEY_USED); localStorage.setItem(TB_KEY_RESET, String(Date.now())); }catch(e){}
   idbDel(FP_KEY).catch(()=>{}).then(()=>{ try{ localStorage.setItem(FP_KEY_RESET, String(Date.now())); }catch(e){} });
+  idbDel(MU_KEY).catch(()=>{}).then(()=>{ muRenderAttachment(); muSync(); });
   document.querySelectorAll("input[type=text], input[type=date], input[type=number], textarea").forEach(i=> i.value="");
   document.querySelectorAll("select").forEach(s=> s.value="");
   document.querySelectorAll("input[type=checkbox]").forEach(c=> c.checked=false);
