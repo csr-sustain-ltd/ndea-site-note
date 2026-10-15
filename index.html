@@ -9,7 +9,7 @@
 
 <!-- Build stamp. INCREMENT THIS ON EVERY DEPLOYMENT (YYYY-MM-DD-NN).
      The freshness check below reads it, so it lives in exactly one place. -->
-<meta name="build-version" content="2026-10-15-02">
+<meta name="build-version" content="2026-10-16-01">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -563,6 +563,29 @@ body.fp-open{overflow:hidden;padding:0 !important;background:#E2E8F0;}
 .fp-sw{width:28px;height:28px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1px var(--border-color);cursor:pointer;}
 .fp-sw.active{box-shadow:0 0 0 3px var(--primary-color);}
 .fp-widths{display:flex;flex-direction:column;gap:4px;padding:8px 6px 0;}
+.fp-size{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 2px 0;}
+.fp-slab{font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;text-align:center;}
+.fp-range{width:72px;accent-color:var(--primary-color);}
+.fp-sval{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;}
+.fp-wprev{width:56px;height:26px;display:flex;align-items:center;justify-content:center;background:#F8FAFC;border-radius:6px;}
+.fp-wprev span{display:block;width:44px;border-radius:9px;min-height:.5px;}
+.fp-tprev{height:30px;display:flex;align-items:center;justify-content:center;font-weight:700;font-family:Arial,sans-serif;line-height:1;overflow:hidden;width:56px;}
+.fp-measure{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);background:#0F172A;color:#fff;font-weight:700;font-size:15px;border-radius:999px;padding:7px 16px;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,.2);}
+.fp-tab-edit{opacity:.7;font-size:12px;}
+.fp-ltabs{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 12px;}
+.fp-ltab{font:inherit;font-size:14px;font-weight:700;background:#F1F5F9;border:1px solid var(--border-color);border-radius:10px;padding:8px 14px;cursor:pointer;}
+.fp-ltab.active{background:var(--primary-color);border-color:var(--primary-color);color:#fff;}
+.fp-label-card{max-width:min(640px,96vw);width:96vw;}
+.fp-chip small{font-weight:400;color:var(--muted);font-size:11.5px;}
+.fp-chip-other{border-style:dashed;}
+.fp-other{margin-bottom:8px;}
+.fp-scale-card{max-width:min(520px,96vw);width:96vw;}
+.fp-scale-sub{font-size:13.5px !important;color:var(--muted) !important;margin:0 0 12px !important;}
+.fp-ratio-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-weight:700;font-size:15px;}
+.fp-ratio-row .fp-askin{margin:0;max-width:160px;}
+.fp-ratio-row .pcdb-sel{max-width:120px;}
+.fp-linkbtn{background:none;border:none;font:inherit;font-size:14px;font-weight:600;color:var(--primary-color);cursor:pointer;padding:4px 0 14px;}
+.fp-bb.fp-scale-btn.on{background:#DCFCE7;border-color:#86EFAC;color:#14532D;}
 .fp-wd{height:30px;display:flex;align-items:center;justify-content:center;background:#F8FAFC;border:2px solid transparent;border-radius:8px;cursor:pointer;}
 .fp-wd span{display:block;width:40px;background:#1E293B;border-radius:4px;}
 .fp-wd.active{border-color:var(--primary-color);background:var(--primary-soft);}
@@ -3934,28 +3957,30 @@ function fpDrawItem(ctx, it, s){
     const dx = it.b[0]-it.a[0], dy = it.b[1]-it.a[1], L = Math.hypot(dx,dy); if(!L) return;
     const ang = Math.atan2(dy,dx), sgn = it.flip ? 1 : -1, leafAng = ang + sgn*Math.PI/2;
     const leaf = [it.a[0]+L*Math.cos(leafAng), it.a[1]+L*Math.sin(leafAng)];
-    ctx.save(); ctx.strokeStyle = "#ffffff"; ctx.lineWidth = (it.w||3)+6; seg(it.a, it.b); ctx.restore();
-    ctx.lineWidth = Math.max(2,(it.w||3)*0.8); seg(it.a, leaf);
-    ctx.save(); ctx.setLineDash([8,6]); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(it.a[0], it.a[1], L, ang, leafAng, sgn<0); ctx.stroke(); ctx.restore();
+    const w0 = it.w||3;
+    ctx.save(); ctx.strokeStyle = "#ffffff"; ctx.lineWidth = w0*3; seg(it.a, it.b); ctx.restore();
+    ctx.lineWidth = w0*0.8; seg(it.a, leaf);
+    ctx.save(); ctx.setLineDash([w0*2.7, w0*2]); ctx.lineWidth = w0*0.5; ctx.beginPath(); ctx.arc(it.a[0], it.a[1], L, ang, leafAng, sgn<0); ctx.stroke(); ctx.restore();
   } else if(it.t==="win"){
     const dx = it.b[0]-it.a[0], dy = it.b[1]-it.a[1], L = Math.hypot(dx,dy); if(!L) return;
-    const nx = -dy/L*7, ny = dx/L*7;
+    const half = Math.max(0.6, (it.w||3)*2.3), nx = -dy/L*half, ny = dx/L*half;
     ctx.save(); ctx.fillStyle = "#ffffff";
     ctx.beginPath(); ctx.moveTo(it.a[0]+nx,it.a[1]+ny); ctx.lineTo(it.b[0]+nx,it.b[1]+ny); ctx.lineTo(it.b[0]-nx,it.b[1]-ny); ctx.lineTo(it.a[0]-nx,it.a[1]-ny); ctx.closePath(); ctx.fill();
-    ctx.lineWidth = 2; ctx.stroke(); ctx.restore();
-    ctx.lineWidth = 1.5; seg(it.a, it.b);
+    ctx.lineWidth = (it.w||3)*0.66; ctx.stroke(); ctx.restore();
+    ctx.lineWidth = (it.w||3)*0.5; seg(it.a, it.b);
   } else if(it.t==="dim"){
-    ctx.lineWidth = 1.5; seg(it.a, it.b);
-    const dx = it.b[0]-it.a[0], dy = it.b[1]-it.a[1], L = Math.hypot(dx,dy)||1, nx = -dy/L*10, ny = dx/L*10;
+    const fs = it.size || 24;
+    ctx.lineWidth = it.w ? Math.min(it.w, fs*0.12) : 1.5; seg(it.a, it.b);
+    const dx = it.b[0]-it.a[0], dy = it.b[1]-it.a[1], L = Math.hypot(dx,dy)||1, tk = fs*0.42, nx = -dy/L*tk, ny = dx/L*tk;
     seg([it.a[0]+nx,it.a[1]+ny],[it.a[0]-nx,it.a[1]-ny]); seg([it.b[0]+nx,it.b[1]+ny],[it.b[0]-nx,it.b[1]-ny]);
     if(it.s){
       const mx = (it.a[0]+it.b[0])/2, my = (it.a[1]+it.b[1])/2;
       let ang = Math.atan2(dy,dx); if(ang>Math.PI/2 || ang<-Math.PI/2) ang += Math.PI;
       ctx.save(); ctx.translate(mx,my); ctx.rotate(ang);
-      ctx.font = "600 24px Arial, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
-      const tw = ctx.measureText(it.s).width;
-      ctx.fillStyle = "rgba(255,255,255,.85)"; ctx.fillRect(-tw/2-4, -30, tw+8, 26);
-      ctx.fillStyle = it.c; ctx.fillText(it.s, 0, -6); ctx.restore();
+      ctx.font = "600 "+fs+"px Arial, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+      const tw = ctx.measureText(it.s).width, pad = fs*0.17;
+      ctx.fillStyle = "rgba(255,255,255,.85)"; ctx.fillRect(-tw/2-pad, -fs*1.25, tw+pad*2, fs*1.08);
+      ctx.fillStyle = it.c; ctx.fillText(it.s, 0, -fs*0.25); ctx.restore();
     }
   } else if(it.t==="text"){
     ctx.font = "600 "+(it.size||30)+"px Arial, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
@@ -4032,7 +4057,7 @@ function fpStartEditor(){
   document.querySelectorAll(".shell, .actionbar").forEach(x=> x.style.display = "none");
   document.body.classList.add("fp-open");
 
-  const S = {pages:[], cur:0, tool:"pen", color:"#1E293B", width:3, grid:true, snap:true, undo:[], redo:[], view:{s:1,tx:0,ty:0}, penSeen:false};
+  const S = {pages:[], cur:0, tool:"pen", color:"#1E293B", width:3, textSize:30, grid:true, snap:true, undo:[], redo:[], view:{s:1,tx:0,ty:0}, penSeen:false, labelCat:"Activity"};
   const page = ()=> S.pages[S.cur];
   const newPage = name => ({id:"p"+Date.now()+Math.random().toString(36).slice(2,6), name, w:FP_W, h:FP_H, bg:null, items:[]});
 
@@ -4072,9 +4097,27 @@ function fpStartEditor(){
   const sw = el("div",{class:"fp-swatches"});
   colours.forEach(([c,n])=>{ const b = el("button",{type:"button", class:"fp-sw", title:n, style:"background:"+c, "data-c":c}); b.addEventListener("click", ()=>{ S.color = c; syncUi(); }); sw.appendChild(b); });
   side.appendChild(sw);
-  const widths = el("div",{class:"fp-widths"});
-  [[2,"Thin"],[4,"Medium"],[7,"Thick"]].forEach(([w,n])=>{ const b = el("button",{type:"button", class:"fp-wd", title:n, "data-w":w}, el("span",{style:`height:${w}px`})); b.addEventListener("click", ()=>{ S.width = w; syncUi(); }); widths.appendChild(b); });
-  side.appendChild(widths);
+  // pen and text size: logarithmic sliders, down to very fine lines for detailed plans
+  const W_MIN = 0.2, W_MAX = 16, T_MIN = 4, T_MAX = 80;
+  const toSlider = (v,a,b)=> Math.round(100*Math.log(v/a)/Math.log(b/a));
+  const fromSlider = (x,a,b)=> +(a*Math.pow(b/a, x/100)).toFixed(2);
+  const wSlider = el("input",{type:"range", min:"0", max:"100", step:"1", class:"fp-range", "aria-label":"Pen size"});
+  const tSlider = el("input",{type:"range", min:"0", max:"100", step:"1", class:"fp-range", "aria-label":"Text and dimension size"});
+  const wPrev = el("div",{class:"fp-wprev"}, el("span",{})), tPrev = el("div",{class:"fp-tprev"},"Aa");
+  const wVal = el("span",{class:"fp-sval"}), tVal = el("span",{class:"fp-sval"});
+  wSlider.addEventListener("input", ()=>{ S.width = fromSlider(+wSlider.value, W_MIN, W_MAX); syncSize(); });
+  tSlider.addEventListener("input", ()=>{ S.textSize = fromSlider(+tSlider.value, T_MIN, T_MAX); syncSize(); });
+  side.appendChild(el("div",{class:"fp-size"}, el("div",{class:"fp-slab"},"Pen size"), wPrev, wSlider, wVal));
+  side.appendChild(el("div",{class:"fp-size"}, el("div",{class:"fp-slab"},"Text / dim."), tPrev, tSlider, tVal));
+  // previews show the size as it will look at the current zoom
+  function syncSize(){
+    wSlider.value = toSlider(S.width, W_MIN, W_MAX); tSlider.value = toSlider(S.textSize, T_MIN, T_MAX);
+    const px = Math.max(0.5, Math.min(24, S.width*S.view.s));
+    wPrev.firstChild.style.height = px+"px"; wPrev.firstChild.style.background = S.color;
+    tPrev.style.fontSize = Math.max(6, Math.min(36, S.textSize*S.view.s))+"px"; tPrev.style.color = S.color;
+    wVal.textContent = S.width<1 ? S.width.toFixed(1) : String(Math.round(S.width*10)/10);
+    tVal.textContent = String(Math.round(S.textSize));
+  }
 
   const stage = el("div",{class:"fp-stage"});
   const canvas = el("canvas",{class:"fp-canvas"});
@@ -4090,9 +4133,11 @@ function fpStartEditor(){
   const bFit = el("button",{type:"button", class:"fp-bb"},"⤢ Fit"), bZoomIn = el("button",{type:"button", class:"fp-bb"},"＋"), bZoomOut = el("button",{type:"button", class:"fp-bb"},"－");
   const bRename = el("button",{type:"button", class:"fp-bb"},"Rename page"), bDelPage = el("button",{type:"button", class:"fp-bb"},"Delete page"), bClear = el("button",{type:"button", class:"fp-bb danger"},"Clear page");
   const saved = el("span",{class:"fp-saved"},"");
+  const bScale = el("button",{type:"button", class:"fp-bb fp-scale-btn"},"📐 Scale: not set");
   bottom.appendChild(el("div",{class:"fp-bgroup"}, bUndo, bRedo));
   bottom.appendChild(el("div",{class:"fp-bgroup"}, bGrid, bSnap));
   bottom.appendChild(el("div",{class:"fp-bgroup"}, bZoomOut, bFit, bZoomIn));
+  bottom.appendChild(el("div",{class:"fp-bgroup"}, bScale));
   bottom.appendChild(el("div",{class:"fp-bgroup"}, bRename, bDelPage, bClear));
   bottom.appendChild(saved);
 
@@ -4115,12 +4160,12 @@ function fpStartEditor(){
     const r = stage.getBoundingClientRect(), p = page(); if(!p || !r.width) return;
     const s = Math.min((r.width-40)/p.w, (r.height-40)/p.h);
     S.view = {s, tx:(r.width-p.w*s)/2, ty:(r.height-p.h*s)/2};
-    draw();
+    draw(); if(typeof syncSize==="function") syncSize();
   }
   const toWorld = (x,y)=> [(x - S.view.tx)/S.view.s, (y - S.view.ty)/S.view.s];
   function zoomAt(f, cx, cy){
     const s2 = Math.min(8, Math.max(0.08, S.view.s*f)); f = s2/S.view.s;
-    S.view.tx = cx - (cx - S.view.tx)*f; S.view.ty = cy - (cy - S.view.ty)*f; S.view.s = s2; draw();
+    S.view.tx = cx - (cx - S.view.tx)*f; S.view.ty = cy - (cy - S.view.ty)*f; S.view.s = s2; draw(); syncSize();
   }
 
   /* drawing state */
@@ -4245,13 +4290,14 @@ function fpStartEditor(){
 
   function start(p, e){
     const before = snapshot();
-    const base = {c:S.color, w:S.width};
+    const base = {c:S.color, w:S.width, size:S.textSize};
     if(S.tool==="pen"){ act = {kind:"pen", before, it:Object.assign({t:"path", pts:[p]}, base), last:p, lastT:performance.now()}; preview = act.it; armHold(); }
     else if(["line","rect","door","win","dim"].includes(S.tool)){
       const a = snapPoint(p, {grid:true});
       act = {kind:"shape", before, it:Object.assign({t:S.tool, a, b:a}, base)}; preview = act.it;
     }
-    else if(S.tool==="text"){ act = null; askText("Label", "Room name or note", ROOM_CHIPS, txt=>{ if(!txt) return; page().items.push({t:"text", p, s:txt, c:S.color, size:30}); commit(before); draw(); }); }
+    else if(S.tool==="text"){ act = {kind:"textTap", before, p}; }
+    else if(S.tool==="calib"){ const a = snapPoint(p, {grid:false}); act = {kind:"shape", before, it:{t:"dim", a, b:a, c:"#EA580C", w:S.width, size:S.textSize}, calib:true}; preview = act.it; }
     else if(S.tool==="erase"){ act = {kind:"erase", before, n:0}; eraseAt(p); }
     else if(S.tool==="move"){
       const it = hitItem(p);
@@ -4280,7 +4326,8 @@ function fpStartEditor(){
       const l = act.last;
       if(Math.hypot(p[0]-l[0], p[1]-l[1]) > 2.5/S.view.s){ act.it.pts.push(p); act.last = p; armHold(); }
     } else if(act.kind==="shape"){
-      act.it.b = (act.it.t==="rect") ? snapPoint(p, {grid:true}) : endPoint(act.it.a, p);
+      act.it.b = (act.it.t==="rect") ? snapPoint(p, {grid:true}) : (act.calib ? p : endPoint(act.it.a, p));
+      showMeasure(act.it);
     } else if(act.kind==="erase"){ eraseAt(p); }
     else if(act.kind==="move"){ moveItem(act.it, p[0]-act.last[0], p[1]-act.last[1]); act.last = p; act.moved = true; }
   }
@@ -4290,14 +4337,26 @@ function fpStartEditor(){
   }
   function finish(){
     clearTimeout(holdTimer);
-    const a = act; act = null; preview = null; snapMark = null;
+    const a = act; act = null; preview = null; snapMark = null; showMeasure(null);
+    if(a.kind==="textTap"){ askLabel(txt=>{ if(!txt) return; page().items.push({t:"text", p:a.p, s:txt, c:S.color, size:S.textSize}); commit(a.before); draw(); }); return; }
+    if(a.kind==="shape" && a.calib){
+      const L = Math.hypot(a.it.b[0]-a.it.a[0], a.it.b[1]-a.it.a[1]);
+      setTool(S.prevTool || "pen"); draw();
+      if(L < 6/S.view.s) return;
+      askText("Known length", "Real length in metres, e.g. 6.5", [], txt=>{
+        const m = parseFloat(String(txt||"").replace(",","."));
+        if(m>0){ page().mpu = m/L; page().scaleLabel = "Measured ("+m+" m)"; save(); syncUi(); }
+      }, true);
+      return;
+    }
     if(a.kind==="pen"){ page().items.push(a.it); commit(a.before); }
     else if(a.kind==="shape"){
       const it = a.it, L = Math.hypot(it.b[0]-it.a[0], it.b[1]-it.a[1]);
       if(L < 6/S.view.s){ draw(); return; }                      // a tap, not a drag
       page().items.push(it);
       if(it.t==="dim"){
-        askText("Dimension", "e.g. 5.40 m", [], txt=>{ it.s = txt || ""; commit(a.before); draw(); }, true);
+        const auto = fmtLen(L);
+        askText("Dimension", "e.g. 5.40 m", [], txt=>{ it.s = txt || ""; commit(a.before); draw(); }, true, auto);
       } else commit(a.before);
     }
     else if(a.kind==="erase"){ if(a.n) commit(a.before); }
@@ -4311,10 +4370,11 @@ function fpStartEditor(){
 
   /* text entry sheet (works better than prompt() on an iPad) */
   const ROOM_CHIPS = ["Office","Open plan office","Meeting room","Reception","Corridor","Stairs","Lift","WC","Accessible WC","Showers","Kitchen","Tea point","Store","Cleaner's store","Plant room","Server room","Retail","Warehouse","Workshop","Canteen","Classroom","Hall"];
-  function askText(title, ph, chips, cb, numeric){
+  function askText(title, ph, chips, cb, numeric, initial){
     const scrim = el("div",{class:"modal-scrim fp-ask"});
     const card = el("div",{class:"modal-card"});
-    const inp = el("input",{type:"text", class:"fp-askin", placeholder:ph, inputmode: numeric ? "decimal" : "text"});
+    const inp = el("input",{type:"text", class:"fp-askin", placeholder:ph, inputmode: numeric ? "decimal" : "text", autocomplete:"off", enterkeyhint:"done"});
+    if(initial) inp.value = initial;
     const done = v=>{ scrim.remove(); cb(v); };
     card.appendChild(el("h3",{}, title));
     card.appendChild(inp);
@@ -4328,15 +4388,126 @@ function fpStartEditor(){
     inp.addEventListener("keydown", e=>{ if(e.key==="Enter") done(inp.value.trim()); if(e.key==="Escape") done(numeric ? "" : null); });
     card.appendChild(el("div",{class:"modal-btns"}, no, ok));
     scrim.appendChild(card); document.body.appendChild(scrim);
-    setTimeout(()=> inp.focus(), 50);
+    // focus in the same tap that opened the box, otherwise iPad won't raise the keyboard
+    inp.focus(); if(initial) inp.select();
+    setTimeout(()=>{ if(document.activeElement!==inp) inp.focus(); }, 30);
+  }
+
+  /* ---------- labels: Activity / Lighting / HVAC / Extract system ---------- */
+  const LABEL_CATS = {
+    "Activity": ROOM_CHIPS,
+    "Lighting": LAMP_TYPES.filter(([c])=> c!=="Other").map(([c,d])=> ({label:c, sub:d})),
+    "HVAC": ["RAD","E-Panel-FAN","E-Panel-UNFAN","AC","VRF"],
+    "Extract system": ["Local extract","Mechanical extract"]
+  };
+  function askLabel(cb){
+    const scrim = el("div",{class:"modal-scrim fp-ask"});
+    const card = el("div",{class:"modal-card fp-label-card"});
+    const done = v=>{ scrim.remove(); cb(v); };
+    card.appendChild(el("h3",{},"Add a label"));
+    const tabsRow = el("div",{class:"fp-ltabs"}), chipsBox = el("div",{class:"fp-chips"});
+    const inp = el("input",{type:"text", class:"fp-askin", placeholder:"Type your own label…", autocomplete:"off", enterkeyhint:"done"});
+    const other = el("div",{class:"fp-other", style:"display:none;"}, inp);
+    function show(cat){
+      S.labelCat = cat;
+      tabsRow.querySelectorAll("button").forEach(b=> b.classList.toggle("active", b.textContent===cat));
+      chipsBox.innerHTML = "";
+      LABEL_CATS[cat].forEach(c=>{
+        const lab = typeof c==="string" ? c : c.label;
+        const b = el("button",{type:"button", class:"fp-chip"}, lab, (typeof c==="object" && c.sub) ? el("small",{}," "+c.sub) : null);
+        b.addEventListener("click", ()=> done(lab));
+        chipsBox.appendChild(b);
+      });
+      if(cat!=="Extract system"){
+        const ob = el("button",{type:"button", class:"fp-chip fp-chip-other"}, "Other – type…");
+        // tapping "Other" opens the box and the keyboard straight away
+        ob.addEventListener("click", ()=>{ other.style.display = ""; inp.focus(); });
+        chipsBox.appendChild(ob);
+      }
+    }
+    Object.keys(LABEL_CATS).forEach(cat=>{ const b = el("button",{type:"button", class:"fp-ltab"}, cat); b.addEventListener("click", ()=> show(cat)); tabsRow.appendChild(b); });
+    card.appendChild(tabsRow); card.appendChild(chipsBox); card.appendChild(other);
+    const ok = el("button",{type:"button", class:"btn btn-primary"},"Add"), no = el("button",{type:"button", class:"btn btn-secondary"},"Cancel");
+    ok.addEventListener("click", ()=> done(inp.value.trim() || null)); no.addEventListener("click", ()=> done(null));
+    inp.addEventListener("keydown", e=>{ if(e.key==="Enter") done(inp.value.trim() || null); if(e.key==="Escape") done(null); });
+    card.appendChild(el("div",{class:"modal-btns"}, no, ok));
+    scrim.appendChild(card); document.body.appendChild(scrim);
+    show(S.labelCat in LABEL_CATS ? S.labelCat : "Activity");
+  }
+
+  /* ---------- scale ---------- */
+  const PAPER = {A4:[210,297], A3:[297,420], A2:[420,594], A1:[594,841], A0:[841,1189]};
+  const measure = el("div",{class:"fp-measure", style:"display:none;"});
+  stage.appendChild(measure);
+  function fmtLen(L){ const m = page().mpu; return m ? (L*m).toFixed(2)+" m" : ""; }
+  function showMeasure(it){
+    const m = page() && page().mpu;
+    if(!it || !m){ measure.style.display = "none"; return; }
+    let t;
+    if(it.t==="rect"){ const w = Math.abs(it.b[0]-it.a[0])*m, h = Math.abs(it.b[1]-it.a[1])*m; t = w.toFixed(2)+" × "+h.toFixed(2)+" m  ·  "+(w*h).toFixed(1)+" m²"; }
+    else t = (Math.hypot(it.b[0]-it.a[0], it.b[1]-it.a[1])*m).toFixed(2)+" m";
+    measure.textContent = "📏 "+t; measure.style.display = "";
+  }
+  function askScale(pages){
+    const p0 = pages[0];
+    const scrim = el("div",{class:"modal-scrim fp-ask"});
+    const card = el("div",{class:"modal-card fp-scale-card"});
+    const close = ()=> scrim.remove();
+    card.appendChild(el("h3",{},"What's the scale of this plan?"));
+    card.appendChild(el("p",{class:"fp-scale-sub"}, "Enter the scale printed on the drawing (usually in the title block). Lines and dimensions you draw are then measured to scale automatically."));
+    const ratio = el("input",{type:"text", inputmode:"numeric", class:"fp-askin fp-ratio", placeholder:"100", autocomplete:"off"});
+    if(p0.scaleN) ratio.value = p0.scaleN;
+    const chips = el("div",{class:"fp-chips"});
+    [50,100,200,250,500,1000,1250].forEach(n=>{ const b = el("button",{type:"button", class:"fp-chip"}, "1:"+n); b.addEventListener("click", ()=>{ ratio.value = n; }); chips.appendChild(b); });
+    card.appendChild(el("div",{class:"fp-ratio-row"}, el("span",{},"Scale  1 :"), ratio));
+    card.appendChild(chips);
+    let paperSel = null;
+    if(!p0.paper){
+      // photos don't say how big the paper was
+      paperSel = el("select",{class:"pcdb-sel"}, ...Object.keys(PAPER).map(k=> el("option",{value:k}, k)));
+      paperSel.value = p0.paperName || "A3";
+      card.appendChild(el("label",{class:"fp-ratio-row"}, el("span",{},"Paper size of the printed plan"), paperSel));
+    } else {
+      card.appendChild(el("p",{class:"fp-scale-sub"}, "Paper size read from the PDF: "+Math.round(p0.paper.w)+" × "+Math.round(p0.paper.h)+" mm."));
+    }
+    let allCb = null;
+    if(pages.length>1){
+      allCb = el("input",{type:"checkbox", id:"fp_scale_all"}); allCb.checked = true;
+      card.appendChild(el("label",{class:"em-calcs", for:"fp_scale_all"}, allCb, el("span",{},"Use this scale for all "+pages.length+" imported pages")));
+    }
+    const calib = el("button",{type:"button", class:"fp-linkbtn"},"Or measure a known length on the plan instead →");
+    calib.addEventListener("click", ()=>{
+      close(); S.prevTool = S.tool; setTool("calib");
+      hint.textContent = "Drag along something whose length you know (e.g. a dimensioned wall), then enter its length.";
+    });
+    card.appendChild(calib);
+    const skip = el("button",{type:"button", class:"btn btn-secondary"},"Not to scale / skip"), ok = el("button",{type:"button", class:"btn btn-primary"},"Set scale");
+    skip.addEventListener("click", close);
+    ok.addEventListener("click", ()=>{
+      const n = parseFloat(String(ratio.value).replace(/^1\s*:\s*/,""));
+      if(!(n>0)){ ratio.focus(); return; }
+      (allCb && !allCb.checked ? [p0] : pages).forEach(p=>{
+        let long;
+        if(p.paper) long = Math.max(p.paper.w, p.paper.h);
+        else { const ps = PAPER[paperSel.value]; long = ps[1]; p.paperName = paperSel.value; }
+        p.mpu = (long/1000*n) / Math.max(p.w, p.h);
+        p.scaleN = n; p.scaleLabel = "1:"+n;
+      });
+      close(); save(); syncUi();
+    });
+    card.appendChild(el("div",{class:"modal-btns"}, skip, ok));
+    scrim.appendChild(card); document.body.appendChild(scrim);
   }
 
   /* pages */
   function drawTabs(){
     tabs.innerHTML = "";
     S.pages.forEach((p,i)=>{
-      const b = el("button",{type:"button", class:"fp-tab"+(i===S.cur?" active":"")}, p.name);
-      b.addEventListener("click", ()=>{ S.cur = i; hi = null; drawTabs(); fit(); syncUi(); });
+      const b = el("button",{type:"button", class:"fp-tab"+(i===S.cur?" active":""), title: i===S.cur ? "Tap to rename" : "Open this page"}, p.name, i===S.cur ? el("span",{class:"fp-tab-edit"}," ✎") : null);
+      b.addEventListener("click", ()=>{
+        if(i===S.cur){ renamePage(); return; }
+        S.cur = i; hi = null; drawTabs(); fit(); syncUi();
+      });
       tabs.appendChild(b);
     });
     tabs.appendChild(addPg);
@@ -4345,7 +4516,8 @@ function fpStartEditor(){
     const names = ["Ground floor","First floor","Second floor","Third floor","Fourth floor","Basement","Roof"];
     askText("New page", "e.g. First floor", names, n=>{ if(!n) return; S.pages.push(newPage(n)); S.cur = S.pages.length-1; drawTabs(); fit(); save(); syncUi(); });
   });
-  bRename.addEventListener("click", ()=> askText("Rename page", page().name, ["Ground floor","First floor","Second floor","Basement","Mezzanine","Roof plan","Site plan"], n=>{ if(!n) return; page().name = n; drawTabs(); save(); }));
+  function renamePage(){ askText("Rename page", "Page name", ["Ground floor","First floor","Second floor","Basement","Mezzanine","Roof plan","Site plan"], n=>{ if(!n) return; page().name = n; drawTabs(); save(); }, false, page().name); }
+  bRename.addEventListener("click", renamePage);
   bDelPage.addEventListener("click", ()=>{
     if(S.pages.length===1){ if(confirm("Clear this page instead? It's the only page.")) clearPage(); return; }
     if(!confirm("Delete the page \""+page().name+"\"? This can't be undone.")) return;
@@ -4365,6 +4537,7 @@ function fpStartEditor(){
     S.cur = r.pg; S.pages[r.pg].items = JSON.parse(r.items); drawTabs(); draw(); save(); syncUi();
   });
   bGrid.addEventListener("click", ()=>{ S.grid = !S.grid; syncUi(); draw(); });
+  bScale.addEventListener("click", ()=> askScale([page()]));
   bSnap.addEventListener("click", ()=>{ S.snap = !S.snap; syncUi(); });
   bFit.addEventListener("click", fit);
   bZoomIn.addEventListener("click", ()=>{ const r = stage.getBoundingClientRect(); zoomAt(1.25, r.width/2, r.height/2); });
@@ -4379,10 +4552,11 @@ function fpStartEditor(){
   function syncUi(){
     Object.entries(toolBtns).forEach(([id,b])=> b.classList.toggle("active", id===S.tool));
     sw.querySelectorAll(".fp-sw").forEach(b=> b.classList.toggle("active", b.dataset.c===S.color));
-    widths.querySelectorAll(".fp-wd").forEach(b=> b.classList.toggle("active", +b.dataset.w===S.width));
+    syncSize();
     bGrid.classList.toggle("on", S.grid); bSnap.classList.toggle("on", S.snap);
     bUndo.disabled = !S.undo.length; bRedo.disabled = !S.redo.length;
-    hint.textContent = (tools.find(t=>t[0]===S.tool)||[])[3] || "";
+    hint.textContent = S.tool==="calib" ? "Drag along something whose length you know (e.g. a dimensioned wall), then enter its length." : ((tools.find(t=>t[0]===S.tool)||[])[3] || "");
+    if(page()){ bScale.textContent = "📐 Scale: "+(page().scaleLabel || "not set"); bScale.classList.toggle("on", !!page().mpu); }
   }
 
   /* import a PDF or photo of the customer's plans: each PDF page becomes a page to draw on */
@@ -4403,7 +4577,7 @@ function fpStartEditor(){
           c.width = Math.round(vp.width); c.height = Math.round(vp.height);
           const cx = c.getContext("2d"); cx.fillStyle = "#fff"; cx.fillRect(0,0,c.width,c.height);
           await pg.render({canvasContext:cx, viewport:vp}).promise;
-          imgs.push({src:c.toDataURL("image/jpeg", 0.85), w:c.width, h:c.height, name: (n>1 ? "Plan p"+i : f.name.replace(/\.[^.]+$/,""))});
+          imgs.push({src:c.toDataURL("image/jpeg", 0.85), w:c.width, h:c.height, name: (n>1 ? "Plan p"+i : f.name.replace(/\.[^.]+$/,"")), paper:{w:v1.width*25.4/72, h:v1.height*25.4/72}});
         }
         if(doc.numPages>12) alert("Only the first 12 pages were imported.");
       } else {
@@ -4421,11 +4595,14 @@ function fpStartEditor(){
         if(i>0 || p.items.length || p.bg){ p = newPage(im.name); S.pages.push(p); }
         const k = 2000/Math.max(im.w, im.h);
         p.bg = {src:im.src}; p.w = Math.round(im.w*k); p.h = Math.round(im.h*k);
+        p.paper = im.paper || null; p.mpu = null; p.scaleLabel = ""; p.scaleN = null;
+        im.page = p;
         if(p.name==="Ground floor" && i===0 && !p.items.length && S.pages.length===1) p.name = im.name || p.name;
       });
       S.cur = S.pages.findIndex(p=> p.bg && p.bg.src===imgs[0].src);
       await Promise.all(imgs.map(im=> fpImageReady(im.src)));
       drawTabs(); fit(); save(); syncUi();
+      askScale(imgs.map(im=> im.page));
     }catch(err){
       console.warn(err);
       saved.textContent = "";
