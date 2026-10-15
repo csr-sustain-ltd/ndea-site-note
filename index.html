@@ -9,7 +9,7 @@
 
 <!-- Build stamp. INCREMENT THIS ON EVERY DEPLOYMENT (YYYY-MM-DD-NN).
      The freshness check below reads it, so it lives in exactly one place. -->
-<meta name="build-version" content="2026-10-16-02">
+<meta name="build-version" content="2026-10-16-03">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -1182,6 +1182,40 @@ table.epc-cmp td:first-child{font-weight:600;width:170px;}
 .epc-banner.none{background:var(--light-bg);border-color:var(--border-color);color:var(--muted);}
 input.epc-masked{color:transparent !important;text-shadow:0 0 9px rgba(30,41,59,.65);user-select:none;}
 
+/* ---------- Site photos (camera / upload on every survey section) ---------- */
+.ph-bar{margin-top:22px;padding-top:16px;border-top:1px dashed #C9DCD8;}
+.ph-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.ph-title{font-size:13px;font-weight:600;color:var(--primary-color);}
+.ph-title .ph-count{font-weight:400;color:var(--muted);margin-left:6px;}
+.ph-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.ph-btn{font:inherit;font-size:13px;font-weight:600;min-height:44px;padding:0 16px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:background .15s,border-color .15s,color .15s;}
+.ph-btn.ph-cam{background:var(--primary-color);color:#fff;border:1px solid var(--primary-color);}
+.ph-btn.ph-cam:hover{background:var(--primary-hover);border-color:var(--primary-hover);}
+.ph-btn.ph-up{background:#fff;color:var(--primary-color);border:1px solid #BFDAD4;}
+.ph-btn.ph-up:hover{background:var(--primary-soft);}
+.ph-btn:focus-visible,.ph-del:focus-visible,.ph-thumb:focus-visible{outline:2px solid var(--secondary-color);outline-offset:2px;}
+.ph-btn:disabled{opacity:.55;cursor:progress;}
+.ph-file{display:none;}
+.ph-status{font-size:12px;color:var(--muted);margin-top:8px;min-height:0;}
+.ph-status:empty{display:none;}
+.ph-status.err{color:#B91C1C;}
+.ph-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-top:12px;}
+.ph-grid:empty{display:none;}
+.ph-card{border:1px solid var(--border-color);border-radius:10px;overflow:hidden;background:var(--field-bg);display:flex;flex-direction:column;}
+.ph-thumb{display:block;width:100%;aspect-ratio:4/3;padding:0;border:0;background:#E2E8F0;cursor:zoom-in;}
+.ph-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+.ph-meta{padding:8px 9px 9px;display:flex;flex-direction:column;gap:6px;}
+.ph-stamp{font-size:11.5px;line-height:1.35;color:var(--graphite-700);}
+.ph-stamp .ph-src{display:block;color:var(--muted);}
+.ph-stamp .ph-src.warn{color:var(--amber);}
+.ph-cap{width:100%;font:inherit;font-size:12.5px;padding:7px 8px;border:1px solid var(--border-color);border-radius:6px;background:#fff;}
+.ph-del{align-self:flex-start;font:inherit;font-size:12px;color:#B91C1C;background:none;border:0;padding:2px 0;cursor:pointer;text-decoration:underline;}
+.ph-view{position:fixed;inset:0;background:rgba(15,23,42,.88);z-index:1100;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;}
+.ph-view img{max-width:100%;max-height:calc(100% - 60px);object-fit:contain;border-radius:6px;background:#fff;}
+.ph-view-cap{color:#fff;font-size:13px;margin-top:10px;text-align:center;}
+.ph-view-close{position:absolute;top:12px;right:14px;font:inherit;font-size:26px;line-height:1;color:#fff;background:none;border:0;cursor:pointer;padding:6px 10px;}
+@media(max-width:560px){.ph-actions{width:100%;}.ph-btn{flex:1;justify-content:center;padding:0 10px;white-space:nowrap;font-size:12.5px;}.ph-grid{grid-template-columns:repeat(2,1fr);gap:8px;}}
+
 </style>
 </head>
 <body>
@@ -1386,7 +1420,7 @@ function convChip(num, siblings){
   return b;
 }
 
-function section(title, conv, bodyEl){
+function section(title, conv, bodyEl, opts={}){
   const sec = el("div",{class:"section"});
   const head = el("div",{class:"section-head"});
   const titleWrap = el("span",{class:"section-title"}, el("span",{},title));
@@ -1410,9 +1444,295 @@ function section(title, conv, bodyEl){
   sec.appendChild(head);
   const body = el("div",{class:"section-body"});
   body.appendChild(bodyEl);
+  if(opts.photos !== false && !PH_EXCLUDE.has(title)) body.appendChild(phBar(title));
   sec.appendChild(body);
   return sec;
 }
+
+/* ============================================================================
+   SITE PHOTOS
+   Every survey section gets "Take photo" (opens the phone / iPad camera
+   directly) and "Upload photo" (pick existing images). Each photo has the
+   date and time burned into the picture itself, so the stamp survives any
+   export or copy, as required for EPC/DEC audit evidence.
+
+   Where the date comes from:
+     - Take photo:   the moment the photo is taken on this device.
+     - Upload photo: the date the camera wrote into the photo (EXIF). If the
+                     image has none (screenshots, edited or messaged images),
+                     the file date is used and marked "not verified".
+
+   Photos are kept in this browser (IndexedDB) until the form is cleared, and
+   are added to the Word site note when it is generated.
+   ============================================================================ */
+const PH_EXCLUDE = new Set(["Previous EPC Check (optional)", "Job Details (Mark Up)"]);
+const PH_INDEX_KEY = "site-photos";          // list of photo details (with small thumbnails)
+const PH_IMG_PREFIX = "site-photo:";         // full-size stamped image, one key per photo
+const PH_MAX_EDGE = 1600, PH_QUALITY = 0.82, PH_THUMB = 360;
+const phBars = new Map();                    // section title -> {grid, count, render}
+let phIndex = [], phReady = null, phSaveChain = Promise.resolve();
+
+function phLoadIndex(){
+  if(!phReady) phReady = idbGet(PH_INDEX_KEY).then(v=>{ phIndex = Array.isArray(v) ? v : []; return phIndex; }).catch(()=>{ phIndex = []; return phIndex; });
+  return phReady;
+}
+function phSaveIndex(){
+  phSaveChain = phSaveChain.then(()=> idbSet(PH_INDEX_KEY, phIndex)).catch(e=> console.warn("photo index save", e));
+  return phSaveChain;
+}
+function phRenderAll(){ phBars.forEach(b=> b.render()); }
+
+function phFmt(ms){
+  const d = new Date(ms), p = n=> String(n).padStart(2,"0");
+  return p(d.getDate())+"/"+p(d.getMonth()+1)+"/"+d.getFullYear()+" "+p(d.getHours())+":"+p(d.getMinutes())+":"+p(d.getSeconds());
+}
+const PH_SRC_TEXT = {
+  camera: "Taken in the site note",
+  exif:   "Date from photo (camera data)",
+  file:   "File date only – not verified"
+};
+
+/* Reads the original capture date from a JPEG's EXIF data, or null. */
+async function phExifDate(file){
+  try{
+    const head = new DataView(await file.slice(0, 256*1024).arrayBuffer());
+    if(head.byteLength < 4 || head.getUint16(0) !== 0xFFD8) return null;
+    let o = 2;
+    while(o + 4 <= head.byteLength){
+      const marker = head.getUint16(o);
+      if((marker & 0xFF00) !== 0xFF00 || marker === 0xFFDA) return null;
+      const len = head.getUint16(o+2);
+      if(marker === 0xFFE1 && o + 10 <= head.byteLength && head.getUint32(o+4) === 0x45786966){
+        const t = o + 10, le = head.getUint16(t) === 0x4949;
+        const u16 = p=> head.getUint16(t+p, le), u32 = p=> head.getUint32(t+p, le);
+        const ifd = off=>{
+          const n = u16(off), tags = {};
+          for(let i=0;i<n;i++){ const e = off+2+i*12; tags[u16(e)] = {count:u32(e+4), val:u32(e+8), pos:e+8}; }
+          return tags;
+        };
+        const str = tag=>{
+          if(!tag) return null;
+          const off = tag.count > 4 ? tag.val : tag.pos; let s = "";
+          for(let i=0;i<tag.count-1 && i<32;i++){ const c = head.getUint8(t+off+i); if(!c) break; s += String.fromCharCode(c); }
+          return s;
+        };
+        const ifd0 = ifd(u32(4));
+        let dt = null;
+        if(ifd0[0x8769]){ const ex = ifd(ifd0[0x8769].val); dt = str(ex[0x9003]) || str(ex[0x9004]); }
+        if(!dt) dt = str(ifd0[0x0132]);
+        const m = dt && dt.match(/^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})/);
+        if(!m) return null;
+        const d = new Date(+m[1], +m[2]-1, +m[3], +m[4], +m[5], +m[6]).getTime();
+        return isNaN(d) ? null : d;
+      }
+      o += 2 + len;
+    }
+  }catch(e){}
+  return null;
+}
+
+/* Decodes the file the right way up (browsers apply the EXIF rotation). */
+function phDecode(file){
+  return new Promise((res, rej)=>{
+    const url = URL.createObjectURL(file), im = new Image();
+    im.onload = ()=>{ res(im); setTimeout(()=> URL.revokeObjectURL(url), 2000); };
+    im.onerror = ()=>{ URL.revokeObjectURL(url); rej(new Error("this image type can't be opened in the browser")); };
+    im.src = url;
+  });
+}
+
+/* Draws the photo with a date/time band burned into the bottom edge. */
+function phStamp(img, ts, source, sectionTitle){
+  const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+  const k = Math.min(1, PH_MAX_EDGE / Math.max(iw, ih));
+  const w = Math.round(iw*k), h = Math.round(ih*k);
+  const c = document.createElement("canvas"); c.width = w; c.height = h;
+  const ctx = c.getContext("2d");
+  ctx.drawImage(img, 0, 0, w, h);
+
+  const where = [val("p_address").trim(), val("p_postcode").trim()].filter(Boolean).join(", ");
+  const line1 = phFmt(ts) + (source === "file" ? "  (file date – not verified)" : "");
+  const line2 = [sectionTitle, where].filter(Boolean).join("  |  ");
+  let fs = Math.max(14, Math.round(Math.min(w, h) * 0.034));
+  const fit = (txt, weight)=>{ let s = fs; ctx.font = weight+" "+s+"px Arial, sans-serif"; while(ctx.measureText(txt).width > w - fs*1.6 && s > 10){ s--; ctx.font = weight+" "+s+"px Arial, sans-serif"; } return s; };
+  const s1 = fit(line1, "700"), s2 = line2 ? fit(line2, "400") : 0;
+  const pad = Math.round(fs*0.55), bandH = pad*2 + s1 + (s2 ? Math.round(s2*1.35) : 0);
+  ctx.fillStyle = "rgba(0,0,0,.62)"; ctx.fillRect(0, h-bandH, w, bandH);
+  ctx.fillStyle = "#FFFFFF"; ctx.textBaseline = "top";
+  ctx.font = "700 "+s1+"px Arial, sans-serif"; ctx.fillText(line1, pad, h-bandH+pad);
+  if(s2){ ctx.font = "400 "+s2+"px Arial, sans-serif"; ctx.fillText(line2, pad, h-bandH+pad+Math.round(s1*1.3)); }
+
+  const tk = Math.min(1, PH_THUMB / w), t = document.createElement("canvas");
+  t.width = Math.round(w*tk); t.height = Math.round(h*tk);
+  t.getContext("2d").drawImage(c, 0, 0, t.width, t.height);
+  return { src: c.toDataURL("image/jpeg", PH_QUALITY), thumb: t.toDataURL("image/jpeg", 0.7), w, h };
+}
+
+async function phAddFiles(sectionTitle, files, fromCamera, statusEl){
+  await phLoadIndex();
+  const list = Array.from(files || []);
+  let added = 0;
+  for(let i=0;i<list.length;i++){
+    const file = list[i];
+    statusEl.classList.remove("err");
+    statusEl.textContent = "Adding photo"+(list.length>1 ? " "+(i+1)+" of "+list.length : "")+"…";
+    try{
+      if(file.type && !/^image\//.test(file.type)) throw new Error("this file isn't an image");
+      let ts, source;
+      if(fromCamera){ ts = Date.now(); source = "camera"; }
+      else {
+        const ex = await phExifDate(file);
+        if(ex){ ts = ex; source = "exif"; } else { ts = file.lastModified || Date.now(); source = "file"; }
+      }
+      const img = await phDecode(file);
+      const out = phStamp(img, ts, source, sectionTitle);
+      const id = Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+      await idbSet(PH_IMG_PREFIX+id, out.src);
+      phIndex.push({ id, sec: sectionTitle, ts, source, added: Date.now(), caption: "", thumb: out.thumb, w: out.w, h: out.h,
+                     where: [val("p_address").trim(), val("p_postcode").trim()].filter(Boolean).join(", ") });
+      await phSaveIndex();
+      added++;
+    }catch(err){
+      console.warn("photo", err);
+      statusEl.classList.add("err");
+      statusEl.textContent = "Couldn't add "+(file.name ? "\""+file.name+"\"" : "the photo")+": "+(err.message || "unknown error")+". Try a JPG or PNG.";
+      phBars.get(sectionTitle) && phBars.get(sectionTitle).render();
+      return;
+    }
+  }
+  statusEl.textContent = added ? (added === 1 ? "Photo added." : added+" photos added.") : "";
+  setTimeout(()=>{ if(!statusEl.classList.contains("err")) statusEl.textContent = ""; }, 2500);
+  phBars.get(sectionTitle) && phBars.get(sectionTitle).render();
+}
+
+async function phOpenViewer(p){
+  let src = null; try{ src = await idbGet(PH_IMG_PREFIX+p.id); }catch(e){}
+  const box = el("div",{class:"ph-view", role:"dialog", "aria-modal":"true", "aria-label":"Site photo"});
+  const close = el("button",{type:"button", class:"ph-view-close", "aria-label":"Close photo"}, "×");
+  const done = ()=>{ document.removeEventListener("keydown", onKey); box.remove(); };
+  const onKey = e=>{ if(e.key === "Escape") done(); };
+  close.addEventListener("click", done);
+  box.addEventListener("click", e=>{ if(e.target === box) done(); });
+  box.appendChild(close);
+  box.appendChild(el("img",{src: src || p.thumb, alt: p.caption || ("Photo – "+p.sec)}));
+  box.appendChild(el("div",{class:"ph-view-cap"}, (p.caption ? p.caption+"  –  " : "")+phFmt(p.ts)));
+  document.addEventListener("keydown", onKey);
+  document.body.appendChild(box);
+  close.focus();
+}
+
+function phCard(p, rerender){
+  const thumb = el("button",{type:"button", class:"ph-thumb", title:"Open full size"}, el("img",{src:p.thumb, alt: p.caption || ("Photo – "+p.sec), loading:"lazy"}));
+  thumb.addEventListener("click", ()=> phOpenViewer(p));
+  const cap = el("input",{type:"text", class:"ph-cap", placeholder:"Caption, e.g. W1 north elevation", "aria-label":"Photo caption"});
+  cap.value = p.caption || "";
+  let capT = null;
+  cap.addEventListener("input", ()=>{ p.caption = cap.value; clearTimeout(capT); capT = setTimeout(phSaveIndex, 400); });
+  const del = el("button",{type:"button", class:"ph-del"}, "Remove photo");
+  del.addEventListener("click", async ()=>{
+    if(!confirm("Remove this photo from the site note?")) return;
+    phIndex = phIndex.filter(x=> x.id !== p.id);
+    try{ await idbDel(PH_IMG_PREFIX+p.id); }catch(e){}
+    await phSaveIndex(); rerender();
+  });
+  return el("div",{class:"ph-card"}, thumb, el("div",{class:"ph-meta"},
+    el("div",{class:"ph-stamp"}, phFmt(p.ts), el("span",{class:"ph-src"+(p.source === "file" ? " warn" : "")}, PH_SRC_TEXT[p.source] || "")),
+    cap, del));
+}
+
+function phBar(sectionTitle){
+  const bar = el("div",{class:"ph-bar"});
+  const count = el("span",{class:"ph-count"});
+  const status = el("div",{class:"ph-status", "aria-live":"polite"});
+  const grid = el("div",{class:"ph-grid"});
+  const camIn = el("input",{type:"file", accept:"image/*", capture:"environment", class:"ph-file", tabindex:"-1", "aria-hidden":"true"});
+  const upIn = el("input",{type:"file", accept:"image/*", multiple:"", class:"ph-file", tabindex:"-1", "aria-hidden":"true"});
+  const camBtn = el("button",{type:"button", class:"ph-btn ph-cam"}, "📷 Take photo");
+  const upBtn = el("button",{type:"button", class:"ph-btn ph-up"}, "⬆ Upload photo");
+  camBtn.addEventListener("click", ()=> camIn.click());
+  upBtn.addEventListener("click", ()=> upIn.click());
+  const handle = async (input, fromCamera)=>{
+    if(!input.files || !input.files.length) return;
+    const files = Array.from(input.files); input.value = "";
+    camBtn.disabled = upBtn.disabled = true;
+    try{ await phAddFiles(sectionTitle, files, fromCamera, status); }
+    finally{ camBtn.disabled = upBtn.disabled = false; }
+  };
+  camIn.addEventListener("change", ()=> handle(camIn, true));
+  upIn.addEventListener("change", ()=> handle(upIn, false));
+
+  const render = ()=>{
+    const mine = phIndex.filter(p=> p.sec === sectionTitle);
+    count.textContent = mine.length ? "("+mine.length+")" : "";
+    grid.innerHTML = "";
+    mine.forEach(p=> grid.appendChild(phCard(p, render)));
+  };
+  phBars.set(sectionTitle, {render});
+  bar.appendChild(el("div",{class:"ph-head"},
+    el("span",{class:"ph-title"}, "Site photos", count),
+    el("div",{class:"ph-actions"}, camBtn, upBtn)));
+  bar.appendChild(camIn); bar.appendChild(upIn);
+  bar.appendChild(status);
+  bar.appendChild(grid);
+  phLoadIndex().then(render);
+  return bar;
+}
+
+/* All photos, in form order, ready for the Word site note. */
+async function phExportAll(){
+  await phLoadIndex();
+  const order = Array.from(phBars.keys());
+  const sorted = phIndex.slice().sort((a,b)=>{
+    const sa = order.indexOf(a.sec), sb = order.indexOf(b.sec);
+    return (sa<0?999:sa) - (sb<0?999:sb) || a.ts - b.ts;
+  });
+  const groups = [];
+  let n = 0;
+  for(const p of sorted){
+    let src = null; try{ src = await idbGet(PH_IMG_PREFIX+p.id); }catch(e){}
+    if(!src) continue;
+    n++;
+    let g = groups[groups.length-1];
+    if(!g || g.title !== p.sec){ g = {title:p.sec, items:[]}; groups.push(g); }
+    g.items.push({ n, src, w:p.w, h:p.h, caption:(p.caption||"").trim(),
+                   stamp: phFmt(p.ts)+"  –  "+(PH_SRC_TEXT[p.source]||"") });
+  }
+  return groups;
+}
+
+async function phClearAll(){
+  await phLoadIndex();
+  const ids = phIndex.map(p=> p.id);
+  phIndex = [];
+  await phSaveIndex();
+  for(const id of ids){ try{ await idbDel(PH_IMG_PREFIX+id); }catch(e){} }
+  phRenderAll();
+}
+
+/* Photos stay on the device after the page is closed. When the form opens
+   with photos already saved, ask whether they belong to this survey. */
+async function phStartupCheck(){
+  await phLoadIndex();
+  if(!phIndex.length) return;
+  const last = phIndex.reduce((a,b)=> (b.added||0) > (a.added||0) ? b : a);
+  const scrim = el("div",{class:"modal-scrim", role:"dialog", "aria-modal":"true", "aria-labelledby":"ph-old-title"});
+  const card = el("div",{class:"modal-card"});
+  card.appendChild(el("h3",{id:"ph-old-title"}, "Photos from an earlier survey"));
+  card.appendChild(el("p",{}, "This device has ", el("strong",{}, phIndex.length+" site photo"+(phIndex.length>1?"s":"")),
+    " saved, last added on "+phFmt(last.added||last.ts).slice(0,16)+(last.where ? " for "+last.where : "")+
+    ". Keep them if you are continuing that survey, or clear them before starting a new one."));
+  const btns = el("div",{class:"modal-btns"});
+  const clear = el("button",{class:"btn btn-secondary", type:"button"}, "Clear photos");
+  const keep = el("button",{class:"btn btn-primary", type:"button"}, "Keep photos");
+  clear.addEventListener("click", async ()=>{ scrim.remove(); await phClearAll(); });
+  keep.addEventListener("click", ()=> scrim.remove());
+  btns.appendChild(clear); btns.appendChild(keep);
+  card.appendChild(btns); scrim.appendChild(card);
+  document.body.appendChild(scrim);
+  setTimeout(()=> keep.focus(), 0);
+}
+if(!/[?&](floorplan|toolbox)\b/.test(location.search)) window.addEventListener("load", ()=> setTimeout(phStartupCheck, 300));
+
 
 /* ============================================================================
    PREVIOUS EPC CHECK
@@ -5900,7 +6220,7 @@ function buildConventionsPanel(){
     "Summarised from the <strong>Non-Domestic EPC Conventions for England &amp; Wales, Issue 9</strong>. " +
     "Select any convention below &mdash; or any numbered chip beside a section heading &mdash; to open the " +
     "detail panel. Summaries are for on-site reference; work from the full published document for audit."}));
-  panel.appendChild(section("How to use this reference","",intro));
+  panel.appendChild(section("How to use this reference","",intro,{photos:false}));
 
   const groups = {};
   Object.keys(CONV_DATA).sort().forEach(num=>{
@@ -5924,7 +6244,7 @@ function buildConventionsPanel(){
       row.addEventListener("click", ()=> openConvDrawer(num, groups[cat]));
       body.appendChild(row);
     });
-    panel.appendChild(section(cat,"",body));
+    panel.appendChild(section(cat,"",body,{photos:false}));
   });
 
   return panel;
@@ -6161,6 +6481,13 @@ function collectReport(){
     plans.forEach((pl,i)=> sp.blocks.push({t:"image", title:pl.name || ("Plan "+(i+1)), src:pl.src, w:pl.w, h:pl.h, first:i===0}));
   }
 
+  /* Site photographs taken or uploaded in each section */
+  const phGroups = window.__sitePhotos || [];
+  if(phGroups.length){
+    const sph = S("Site Photographs");
+    phGroups.forEach(g=> sph.blocks.push({t:"photos", title:g.title, items:g.items}));
+  }
+
   /* 8 - Photos & sign-off */
   const s8 = S("Photographs & Sign-off");
   sub(s8,"Photographs Taken");
@@ -6208,6 +6535,7 @@ function buildPrintSheet(){
         ps.appendChild(el("div",{class:"notesblock"}, b.label? el("span",{class:"k"},b.label):null, on.length? on.join(", ") : "None ticked."));
       } else if(b.t==="para") ps.appendChild(el("div",{class:"notesblock"}, b.text));
       else if(b.t==="image") ps.appendChild(el("div",{class:"notesblock"}, el("span",{class:"k"},"Floor plan"), b.title+" (in the Word site note)"));
+      else if(b.t==="photos") ps.appendChild(el("div",{class:"notesblock"}, el("span",{class:"k"},b.title), b.items.length+" photo"+(b.items.length>1?"s":"")+" (in the Word site note)"));
       else if(b.t==="sign"){
         const sigLabel = "Assessor Signature" + (R.meta.assessor ? " — "+R.meta.assessor : "") + (R.meta.membership ? " ("+R.meta.membership+")" : "");
         ps.appendChild(el("div",{class:"sign"},
@@ -6256,6 +6584,8 @@ function reportToEmailHtml(R){
         out.push(`<div style="${F}font-size:12px;margin:0 0 8px;">${b.label?`<strong>${E(b.label)}:</strong> `:""}${on.length ? on.map(l=>"&#9745; "+E(l)).join("<br>") : '<span style="color:#64748B;font-style:italic;">None ticked.</span>'}</div>`);
       } else if(b.t==="image"){
         out.push(`<div style="${F}font-size:12px;margin:0 0 6px;">📐 <strong>${E(b.title)}</strong> – included in the Word site note.</div>`);
+      } else if(b.t==="photos"){
+        out.push(`<div style="${F}font-size:12px;margin:0 0 6px;">📷 <strong>${E(b.title)}</strong> – ${b.items.length} photo${b.items.length>1?"s":""}, included in the Word site note.</div>`);
       } else if(b.t==="para"){
         out.push(`<div style="${F}font-size:12px;color:${b.tone==="muted"?"#64748B":"#1E293B"};font-style:${b.tone==="muted"?"italic":"normal"};margin:0 0 8px;">${E(b.text)}</div>`);
       } else if(b.t==="sign"){
@@ -6394,6 +6724,26 @@ async function reportToDocxBlob(R){
     out.push(gap(140));
     return out;
   };
+  const renderPhotos = b => {
+    const out = renderSub({text:b.title});
+    const cw = [Math.floor(W/2), W-Math.floor(W/2)], rows = [];
+    const maxW = 290, maxH = 218;
+    for(let i=0;i<b.items.length;i+=2){
+      rows.push(new TableRow({cantSplit:true, children:[0,1].map(k=>{
+        const it = b.items[i+k];
+        if(!it) return cell([P(run(" "),{after:0})], cw[k], {borders:NOB, pad:60});
+        const s = Math.min(maxW/it.w, maxH/it.h);
+        return cell([
+          P(new ImageRun({data:dataUriBytes(it.src), type:"jpg", transformation:{width:Math.round(it.w*s), height:Math.round(it.h*s)}}),{after:60, align:AlignmentType.CENTER}),
+          P(run("Photo "+it.n+(it.caption ? "  –  "+it.caption : ""),{bold:true,size:17}),{after:20}),
+          P(run(it.stamp,{size:15,color:GREY}),{after:0})
+        ], cw[k], {borders:NOB, pad:80});
+      })}));
+    }
+    out.push(tbl(rows, cw, {borders:NOB}));
+    out.push(gap(160));
+    return out;
+  };
   const renderSub = b => [P([
       run(b.text,{bold:true,size:22,color:TEAL_DK}),
       ...(b.conv ? [run("     Conventions "+b.conv,{size:15,color:LIGHT})] : [])
@@ -6467,6 +6817,7 @@ async function reportToDocxBlob(R){
       else if(b.t==="checks") body.push(...renderChecks(b));
       else if(b.t==="para") body.push(...renderPara(b));
       else if(b.t==="sign") body.push(...(await renderSign()));
+      else if(b.t==="photos") body.push(...renderPhotos(b));
       else if(b.t==="image"){
         // one floor plan per page, scaled to fit the page
         const maxW = 640, maxH = 820;
@@ -6525,7 +6876,7 @@ async function reportToDocxBlob(R){
 }
 
 /* ---------- "Email me a copy?" prompt ---------- */
-function askEmailPreference(planCount, markupCount){
+function askEmailPreference(planCount, markupCount, photoCount){
   return new Promise(resolve=>{
     const email = (val("p_assessor_email")||"").trim();
     const ok = EMAIL_CONFIG.EMAIL_ENABLED && isValidEmail(email);
@@ -6556,8 +6907,14 @@ function askEmailPreference(planCount, markupCount){
       card.appendChild(el("label",{class:"em-calcs em-plans", for:"em-markup"}, muCb,
         el("span",{}, "Attach the Mark Up to the end of the Word site note")));
     }
+    let phCb = null;
+    if(photoCount){
+      phCb = el("input",{type:"checkbox", id:"em-photos"}); phCb.checked = true;
+      card.appendChild(el("label",{class:"em-calcs em-plans", for:"em-photos"}, phCb,
+        el("span",{}, "Add the site photographs to the Word site note (", el("strong",{}, photoCount+" photo"+(photoCount>1?"s":"")), ")")));
+    }
     const btns = el("div",{class:"modal-btns"});
-    const close = v => { document.removeEventListener("keydown", onKey); scrim.remove(); resolve(v===null ? null : {email:v, calcs: calcCb ? calcCb.checked : false, plans: planCb ? planCb.checked : false, markup: muCb ? muCb.checked : false}); };
+    const close = v => { document.removeEventListener("keydown", onKey); scrim.remove(); resolve(v===null ? null : {email:v, calcs: calcCb ? calcCb.checked : false, plans: planCb ? planCb.checked : false, markup: muCb ? muCb.checked : false, photos: phCb ? phCb.checked : false}); };
     const onKey = e => { if(e.key==="Escape") close(null); };
     const cancel = el("button",{class:"btn btn-secondary", type:"button"}, "Cancel");
     cancel.addEventListener("click", ()=> close(null));
@@ -6818,13 +7175,16 @@ document.getElementById("btn-generate").addEventListener("click", async ()=>{
   const statusEl = document.getElementById("status-text");
   const fpPages = await fpLoadPlans();
   const muAtt = await muLoadAttachment();
-  const choice = await askEmailPreference(fpPages.length, muAtt.length);
+  const phCount = (await phLoadIndex()).length;
+  const choice = await askEmailPreference(fpPages.length, muAtt.length, phCount);
   if(choice===null) return;                          // cancelled
   const wantEmail = choice.email;
   window.__includeCalcs = choice.calcs;
   window.__floorPlans = [];
   window.__markupPages = choice.markup ? muAtt : [];
   if(choice.plans){ statusEl.innerHTML = "Adding floor plans…"; try{ window.__floorPlans = await fpExportAll(); }catch(e){ console.warn("floor plans", e); } }
+  window.__sitePhotos = [];
+  if(choice.photos){ statusEl.innerHTML = "Adding site photographs…"; try{ window.__sitePhotos = await phExportAll(); }catch(e){ console.warn("site photos", e); } }
 
   statusEl.innerHTML = "Building Word document…";
   const R = buildPrintSheet();
@@ -6873,10 +7233,11 @@ document.getElementById("btn-generate").addEventListener("click", async ()=>{
 });
 
 document.getElementById("btn-clear").addEventListener("click", ()=>{
-  if(!confirm("Clear all entered data on this form? This cannot be undone.")) return;
+  if(!confirm("Clear all entered data on this form, including site photos? This cannot be undone.")) return;
   try{ localStorage.removeItem(TB_KEY_USED); localStorage.setItem(TB_KEY_RESET, String(Date.now())); }catch(e){}
   idbDel(FP_KEY).catch(()=>{}).then(()=>{ try{ localStorage.setItem(FP_KEY_RESET, String(Date.now())); }catch(e){} });
   idbDel(MU_KEY).catch(()=>{}).then(()=>{ muRenderAttachment(); muSync(); syncMapLink(); });
+  phClearAll().catch(()=>{});
   document.querySelectorAll("input[type=text], input[type=date], input[type=number], textarea").forEach(i=> i.value="");
   document.querySelectorAll("select").forEach(s=> s.value="");
   document.querySelectorAll("input[type=checkbox]").forEach(c=> c.checked=false);
