@@ -9,7 +9,7 @@
 
 <!-- Build stamp. INCREMENT THIS ON EVERY DEPLOYMENT (YYYY-MM-DD-NN).
      The freshness check below reads it, so it lives in exactly one place. -->
-<meta name="build-version" content="2026-10-15-01">
+<meta name="build-version" content="2026-10-15-02">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -607,6 +607,12 @@ body.fp-open{overflow:hidden;padding:0 !important;background:#E2E8F0;}
 .mu-areacheck.bad{background:#FEF3C7;color:#92400E;}
 .mu-banner{display:flex;align-items:center;gap:8px 16px;flex-wrap:wrap;background:#FEF3C7;border:1px solid #FCD34D;color:#78350F;border-radius:10px;padding:9px 14px;margin:0 0 12px;font-size:14px;}
 .mu-banner b{font-weight:700;}
+.addr-wrap{display:flex;gap:8px;align-items:center;}
+.addr-wrap input{flex:1;min-width:0;}
+.map-btn{flex:0 0 auto;display:inline-flex;align-items:center;gap:4px;font-size:13.5px;font-weight:700;color:#fff;background:#1A73E8;border-radius:10px;padding:10px 12px;text-decoration:none;white-space:nowrap;cursor:pointer;}
+.map-btn:hover{background:#1558B0;}
+.map-btn.off{background:#CBD5E1;color:#fff;pointer-events:none;}
+.map-btn.banner{margin-left:auto;padding:6px 12px;border-radius:999px;font-size:13px;}
 .mu-pin{font-size:16px;}
 .mu-card{max-width:min(900px,96vw);width:96vw;}
 .mu-sub{font-size:13.5px !important;color:var(--muted) !important;margin-bottom:14px !important;}
@@ -1917,7 +1923,9 @@ function buildProjectPanel(){
   const panel = el("div",{id:"panel-project", class:"panel"});
 
   const g1 = el("div",{class:"grid2"});
-  g1.appendChild(field("Site Address", textInput("p_address"), true));
+  const addrInp = textInput("p_address");
+  const mapBtn = el("a",{class:"map-btn", id:"p_map_btn", target:"_blank", rel:"noopener", title:"Open directions in Google Maps"},"🧭 Directions");
+  g1.appendChild(field("Site Address", el("div",{class:"addr-wrap"}, addrInp, mapBtn), true, "🧭 opens Google Maps with directions to site"));
   const assessorSel = selectInput("p_assessor", ASSESSORS.map(a=>a.name), "Select assessor…");
   assessorSel.addEventListener("change", onAssessorChange);
   g1.appendChild(field("Assessor Name", assessorSel, true, "Fills in email, membership number and signature"));
@@ -4686,6 +4694,21 @@ function buildMarkupSection(){
   setTimeout(()=>{ muRenderAttachment(); muSync(); }, 0);
   return section("Job Details (Mark Up)", "", body);
 }
+/* Google Maps directions to site (opens the Maps app on a phone or iPad) */
+function siteMapsUrl(){
+  const q = [val("p_address"), val("p_postcode")].map(x=> String(x||"").trim()).filter(Boolean).join(", ");
+  return q ? "https://www.google.com/maps/dir/?api=1&destination="+encodeURIComponent(q) : "";
+}
+function syncMapLink(){
+  const url = siteMapsUrl();
+  document.querySelectorAll(".map-btn").forEach(a=>{
+    if(url){ a.href = url; a.classList.remove("off"); a.removeAttribute("aria-disabled"); }
+    else { a.removeAttribute("href"); a.classList.add("off"); a.setAttribute("aria-disabled","true"); }
+  });
+}
+document.addEventListener("input", e=>{ if(e.target && /^(p_address|p_postcode)$/.test(e.target.id||"")){ syncMapLink(); muSync(); } });
+setTimeout(syncMapLink, 0);
+
 /* arrival / contact reminder banner, and the floor-area check */
 function muSync(){
   const b = document.getElementById("mu_banner");
@@ -4695,9 +4718,11 @@ function muSync(){
     if(val("p_arrival")) parts.push(["Arrive", val("p_arrival")]);
     if(val("p_onsite")) parts.push(["", val("p_onsite")]);
     b.innerHTML = "";
-    if(parts.length){
+    const url = siteMapsUrl();
+    if(parts.length || url){
       b.appendChild(el("span",{class:"mu-pin"},"📍"));
       parts.forEach(([k,v])=> b.appendChild(el("span",{class:"mu-bitem"}, k ? el("b",{},k+" ") : null, v)));
+      if(url) b.appendChild(el("a",{class:"map-btn banner", href:url, target:"_blank", rel:"noopener", title:"Open directions in Google Maps"},"🧭 Directions to site"));
       b.style.display = "";
     } else b.style.display = "none";
   }
@@ -6594,7 +6619,7 @@ document.getElementById("btn-clear").addEventListener("click", ()=>{
   if(!confirm("Clear all entered data on this form? This cannot be undone.")) return;
   try{ localStorage.removeItem(TB_KEY_USED); localStorage.setItem(TB_KEY_RESET, String(Date.now())); }catch(e){}
   idbDel(FP_KEY).catch(()=>{}).then(()=>{ try{ localStorage.setItem(FP_KEY_RESET, String(Date.now())); }catch(e){} });
-  idbDel(MU_KEY).catch(()=>{}).then(()=>{ muRenderAttachment(); muSync(); });
+  idbDel(MU_KEY).catch(()=>{}).then(()=>{ muRenderAttachment(); muSync(); syncMapLink(); });
   document.querySelectorAll("input[type=text], input[type=date], input[type=number], textarea").forEach(i=> i.value="");
   document.querySelectorAll("select").forEach(s=> s.value="");
   document.querySelectorAll("input[type=checkbox]").forEach(c=> c.checked=false);
