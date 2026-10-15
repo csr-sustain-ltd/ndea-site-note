@@ -9,7 +9,7 @@
 
 <!-- Build stamp. INCREMENT THIS ON EVERY DEPLOYMENT (YYYY-MM-DD-NN).
      The freshness check below reads it, so it lives in exactly one place. -->
-<meta name="build-version" content="2026-10-16-01">
+<meta name="build-version" content="2026-10-16-02">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -570,6 +570,12 @@ body.fp-open{overflow:hidden;padding:0 !important;background:#E2E8F0;}
 .fp-wprev{width:56px;height:26px;display:flex;align-items:center;justify-content:center;background:#F8FAFC;border-radius:6px;}
 .fp-wprev span{display:block;width:44px;border-radius:9px;min-height:.5px;}
 .fp-tprev{height:30px;display:flex;align-items:center;justify-content:center;font-weight:700;font-family:Arial,sans-serif;line-height:1;overflow:hidden;width:56px;}
+.fp-optbar{position:absolute;right:12px;top:10px;display:flex;align-items:center;gap:6px;background:#fff;border-radius:12px;padding:6px 8px;box-shadow:0 4px 14px rgba(15,23,42,.15);flex-wrap:wrap;max-width:calc(100% - 24px);}
+.fp-optlab{font-size:12px;font-weight:700;color:var(--muted);padding:0 4px;}
+.fp-optbtn{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:14px;font-weight:700;background:#F1F5F9;border:1px solid var(--border-color);border-radius:9px;padding:8px 12px;cursor:pointer;min-height:40px;}
+.fp-optbtn.on{background:var(--primary-color);color:#fff;border-color:var(--primary-color);}
+.fp-optbtn.danger{color:#B91C1C;}
+.fp-edot{display:inline-block;border-radius:50%;border:2px solid currentColor;}
 .fp-measure{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);background:#0F172A;color:#fff;font-weight:700;font-size:15px;border-radius:999px;padding:7px 16px;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,.2);}
 .fp-tab-edit{opacity:.7;font-size:12px;}
 .fp-ltabs{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 12px;}
@@ -4057,7 +4063,7 @@ function fpStartEditor(){
   document.querySelectorAll(".shell, .actionbar").forEach(x=> x.style.display = "none");
   document.body.classList.add("fp-open");
 
-  const S = {pages:[], cur:0, tool:"pen", color:"#1E293B", width:3, textSize:30, grid:true, snap:true, undo:[], redo:[], view:{s:1,tx:0,ty:0}, penSeen:false, labelCat:"Activity"};
+  const S = {pages:[], cur:0, tool:"pen", color:"#1E293B", width:3, textSize:30, eraser:16, sel:null, grid:true, snap:true, undo:[], redo:[], view:{s:1,tx:0,ty:0}, penSeen:false, labelCat:"Activity"};
   const page = ()=> S.pages[S.cur];
   const newPage = name => ({id:"p"+Date.now()+Math.random().toString(36).slice(2,6), name, w:FP_W, h:FP_H, bg:null, items:[]});
 
@@ -4081,8 +4087,8 @@ function fpStartEditor(){
     ["win","🪟","Window","Drag along the wall."],
     ["text","🔤","Label","Tap to add a room name or note."],
     ["dim","↔️","Dimension","Drag between two points, then type the measurement."],
-    ["move","✋","Move","Drag an item to move it. Tap a door to flip its swing."],
-    ["erase","🧽","Eraser","Tap or drag over items to delete them."],
+    ["move","✋","Move","Drag to move. Tap a label or dimension to resize, edit or recolour it. Tap a door to flip its swing."],
+    ["erase","🧽","Eraser","Tap or drag over items to delete them – pick the eraser size at the top."],
     ["pan","🖐️","Pan","Drag to move around. Pinch with two fingers to zoom."]
   ];
   const side = el("div",{class:"fp-side"});
@@ -4169,7 +4175,7 @@ function fpStartEditor(){
   }
 
   /* drawing state */
-  let preview = null, hi = null;
+  let preview = null, hi = null, eraserAt = null;
   function draw(){
     const p = page(); if(!p) return;
     ctx.setTransform(1,0,0,1,0,0);
@@ -4178,6 +4184,7 @@ function fpStartEditor(){
     ctx.save(); ctx.shadowColor = "rgba(15,23,42,.18)"; ctx.shadowBlur = 20/S.view.s; ctx.fillStyle = "#fff"; ctx.fillRect(0,0,p.w,p.h); ctx.restore();
     ctx.save(); ctx.beginPath(); ctx.rect(0,0,p.w,p.h); ctx.clip();
     fpDrawPage(ctx, p, {grid:S.grid, preview, hi});
+    if(eraserAt && S.tool==="erase"){ ctx.save(); ctx.strokeStyle = "#DC2626"; ctx.fillStyle = "rgba(220,38,38,.08)"; ctx.lineWidth = 1.5/S.view.s; ctx.beginPath(); ctx.arc(eraserAt[0], eraserAt[1], S.eraser/S.view.s, 0, Math.PI*2); ctx.fill(); ctx.stroke(); ctx.restore(); }
     if(snapMark){ ctx.strokeStyle = "#F59E0B"; ctx.lineWidth = 3/S.view.s; ctx.beginPath(); ctx.arc(snapMark[0], snapMark[1], 12/S.view.s, 0, Math.PI*2); ctx.stroke(); }
     ctx.restore();
   }
@@ -4193,6 +4200,36 @@ function fpStartEditor(){
     });
     return pts;
   }
+  /* pixels of an imported plan, to snap onto its lines */
+  const bgPix = new Map();
+  function planPixels(pg){
+    if(!pg || !pg.bg) return null;
+    const key = pg.id+"|"+pg.w+"x"+pg.h+"|"+pg.bg.src.length;
+    if(bgPix.has(key)) return bgPix.get(key);
+    const im = fpImage(pg.bg.src);
+    if(!im || !im.complete || !im.naturalWidth) return null;
+    // sample at up to 2x page units for precision when zoomed in
+    const k = Math.min(2, im.naturalWidth/pg.w) || 1;
+    const c = document.createElement("canvas"); c.width = Math.round(pg.w*k); c.height = Math.round(pg.h*k);
+    const x = c.getContext("2d"); x.drawImage(im, 0, 0, c.width, c.height);
+    let d = null; try{ d = {data:x.getImageData(0,0,c.width,c.height).data, w:c.width, h:c.height, k}; }catch(e){}
+    bgPix.set(key, d); return d;
+  }
+  /* nearest dark (drawn) pixel of the plan within reach of the pen */
+  function snapToPlan(p){
+    const d = planPixels(page()); if(!d) return null;
+    const r = Math.min(30, Math.max(2, 12/S.view.s)) * d.k;
+    const cx = p[0]*d.k, cy = p[1]*d.k;
+    const x0 = Math.max(0, Math.floor(cx-r)), x1 = Math.min(d.w-1, Math.ceil(cx+r)), y0 = Math.max(0, Math.floor(cy-r)), y1 = Math.min(d.h-1, Math.ceil(cy+r));
+    let best = null, bd = r*r;
+    for(let y=y0; y<=y1; y++) for(let x=x0; x<=x1; x++){
+      const i = (y*d.w + x)*4, lum = 0.3*d.data[i] + 0.59*d.data[i+1] + 0.11*d.data[i+2];
+      if(lum > 125) continue;
+      const dd = (x+0.5-cx)*(x+0.5-cx) + (y+0.5-cy)*(y+0.5-cy);
+      if(dd < bd){ bd = dd; best = [(x+0.5)/d.k, (y+0.5)/d.k]; }
+    }
+    return best;
+  }
   function snapPoint(p, opts={}){
     snapMark = null;
     if(!S.snap) return p;
@@ -4200,6 +4237,12 @@ function fpStartEditor(){
     let best = null, bd = tol;
     endpoints(opts.skip).forEach(q=>{ const d = Math.hypot(q[0]-p[0], q[1]-p[1]); if(d<bd){ bd = d; best = q; } });
     if(best){ snapMark = best; return [best[0], best[1]]; }
+    if(page().bg){
+      // imported plan: snap onto its walls and lines, so measurements start and end on them
+      const q = snapToPlan(p);
+      if(q){ snapMark = q; return q; }
+      return p;
+    }
     if(S.grid && opts.grid!==false){ const g = FP_GRID/2; return [Math.round(p[0]/g)*g, Math.round(p[1]/g)*g]; }
     return p;
   }
@@ -4218,13 +4261,13 @@ function fpStartEditor(){
 
   /* hit testing (eraser / move) */
   const dSeg = (p,a,b)=>{ const vx=b[0]-a[0], vy=b[1]-a[1], L2=vx*vx+vy*vy; let t = L2 ? ((p[0]-a[0])*vx+(p[1]-a[1])*vy)/L2 : 0; t = Math.max(0,Math.min(1,t)); return Math.hypot(p[0]-a[0]-t*vx, p[1]-a[1]-t*vy); };
-  function hitItem(p){
-    const tol = 14/S.view.s, items = page().items;
+  function hitItem(p, tolPx){
+    const tol = (tolPx || 14)/S.view.s, items = page().items;
     for(let i=items.length-1;i>=0;i--){
       const it = items[i]; let d = Infinity;
       if(it.t==="path"){ for(let k=1;k<it.pts.length;k++) d = Math.min(d, dSeg(p,it.pts[k-1],it.pts[k])); if(it.pts.length===1) d = Math.hypot(p[0]-it.pts[0][0], p[1]-it.pts[0][1]); }
       else if(it.t==="rect"){ const c = [it.a,[it.b[0],it.a[1]],it.b,[it.a[0],it.b[1]]]; for(let k=0;k<4;k++) d = Math.min(d, dSeg(p,c[k],c[(k+1)%4])); }
-      else if(it.t==="text"){ ctx.font = "600 "+(it.size||30)+"px Arial"; const w = ctx.measureText(it.s).width/2+8, h = (it.size||30)/2+6; if(Math.abs(p[0]-it.p[0])<w && Math.abs(p[1]-it.p[1])<h) d = 0; }
+      else if(it.t==="text"){ ctx.font = "600 "+(it.size||30)+"px Arial"; const w = ctx.measureText(it.s).width/2+8, h = (it.size||30)/2+6; const ox = Math.max(0, Math.abs(p[0]-it.p[0])-w), oy = Math.max(0, Math.abs(p[1]-it.p[1])-h); d = Math.hypot(ox, oy); }
       else if(it.a && it.b){ d = dSeg(p,it.a,it.b); if(it.t==="door"){ const L = Math.hypot(it.b[0]-it.a[0], it.b[1]-it.a[1]); d = Math.min(d, Math.abs(Math.hypot(p[0]-it.a[0],p[1]-it.a[1])-L) < tol*1.5 ? 0 : d); } }
       if(d <= tol + (it.w||3)/2) return it;
     }
@@ -4301,6 +4344,7 @@ function fpStartEditor(){
     else if(S.tool==="erase"){ act = {kind:"erase", before, n:0}; eraseAt(p); }
     else if(S.tool==="move"){
       const it = hitItem(p);
+      if(!it){ S.sel = null; showOptBar(); }
       act = it ? {kind:"move", before, it, last:p, moved:false} : null;
       hi = it; draw();
     }
@@ -4326,14 +4370,17 @@ function fpStartEditor(){
       const l = act.last;
       if(Math.hypot(p[0]-l[0], p[1]-l[1]) > 2.5/S.view.s){ act.it.pts.push(p); act.last = p; armHold(); }
     } else if(act.kind==="shape"){
-      act.it.b = (act.it.t==="rect") ? snapPoint(p, {grid:true}) : (act.calib ? p : endPoint(act.it.a, p));
+      act.it.b = (act.it.t==="rect") ? snapPoint(p, {grid:true}) : (act.calib ? snapPoint(p, {grid:false}) : endPoint(act.it.a, p));
       showMeasure(act.it);
     } else if(act.kind==="erase"){ eraseAt(p); }
     else if(act.kind==="move"){ moveItem(act.it, p[0]-act.last[0], p[1]-act.last[1]); act.last = p; act.moved = true; }
   }
   function eraseAt(p){
-    const it = hitItem(p);
-    if(it){ page().items.splice(page().items.indexOf(it),1); act.n++; draw(); }
+    eraserAt = p;
+    // remove everything the eraser circle touches
+    let it;
+    while((it = hitItem(p, S.eraser))){ page().items.splice(page().items.indexOf(it),1); act.n++; }
+    draw();
   }
   function finish(){
     clearTimeout(holdTimer);
@@ -4359,11 +4406,13 @@ function fpStartEditor(){
         askText("Dimension", "e.g. 5.40 m", [], txt=>{ it.s = txt || ""; commit(a.before); draw(); }, true, auto);
       } else commit(a.before);
     }
-    else if(a.kind==="erase"){ if(a.n) commit(a.before); }
+    else if(a.kind==="erase"){ eraserAt = null; if(a.n) commit(a.before); }
     else if(a.kind==="move"){
       if(!a.moved && a.it.t==="door"){ a.it.flip = !a.it.flip; }
       if(a.moved || a.it.t==="door") commit(a.before);
-      hi = null;
+      // tapping a label or dimension selects it for resizing / editing
+      if(a.it.t==="text" || a.it.t==="dim"){ S.sel = a.it; hi = a.it; } else { S.sel = null; hi = null; }
+      showOptBar();
     }
     draw();
   }
@@ -4437,6 +4486,36 @@ function fpStartEditor(){
 
   /* ---------- scale ---------- */
   const PAPER = {A4:[210,297], A3:[297,420], A2:[420,594], A1:[594,841], A0:[841,1189]};
+  const optBar = el("div",{class:"fp-optbar", style:"display:none;"});
+  stage.appendChild(optBar);
+  function showOptBar(){
+    optBar.innerHTML = "";
+    if(S.tool==="erase"){
+      optBar.appendChild(el("span",{class:"fp-optlab"},"Eraser size"));
+      [["S",8],["M",16],["L",32],["XL",60]].forEach(([n,v])=>{
+        const b = el("button",{type:"button", class:"fp-optbtn"+(S.eraser===v?" on":"")}, el("span",{class:"fp-edot", style:`width:${Math.min(26,v*0.45+4)}px;height:${Math.min(26,v*0.45+4)}px`}), n);
+        b.addEventListener("click", ()=>{ S.eraser = v; showOptBar(); });
+        optBar.appendChild(b);
+      });
+      optBar.style.display = ""; return;
+    }
+    const it = S.sel;
+    if(S.tool==="move" && it && (it.t==="text" || it.t==="dim")){
+      optBar.appendChild(el("span",{class:"fp-optlab"}, it.t==="text" ? "Label" : "Dimension"));
+      const resize = f=> ()=>{ const before = snapshot(); it.size = Math.max(3, Math.min(200, +((it.size || (it.t==="dim"?24:30))*f).toFixed(2))); commit(before); draw(); };
+      const sm = el("button",{type:"button", class:"fp-optbtn", title:"Smaller text"},"A−"), lg = el("button",{type:"button", class:"fp-optbtn", title:"Bigger text"},"A+");
+      sm.addEventListener("click", resize(1/1.2)); lg.addEventListener("click", resize(1.2));
+      const ed = el("button",{type:"button", class:"fp-optbtn"},"✎ Edit");
+      ed.addEventListener("click", ()=> askText(it.t==="text" ? "Edit label" : "Edit dimension", "", [], v=>{ if(v===null || v===undefined) return; const before = snapshot(); it.s = v; commit(before); draw(); }, it.t==="dim", it.s));
+      const cl = el("button",{type:"button", class:"fp-optbtn", title:"Use the current pen colour"},"🎨 Colour");
+      cl.addEventListener("click", ()=>{ const before = snapshot(); it.c = S.color; commit(before); draw(); });
+      const del = el("button",{type:"button", class:"fp-optbtn danger"},"🗑");
+      del.addEventListener("click", ()=>{ const before = snapshot(); page().items.splice(page().items.indexOf(it),1); S.sel = null; hi = null; commit(before); showOptBar(); draw(); });
+      [sm, lg, ed, cl, del].forEach(b=> optBar.appendChild(b));
+      optBar.style.display = ""; return;
+    }
+    optBar.style.display = "none";
+  }
   const measure = el("div",{class:"fp-measure", style:"display:none;"});
   stage.appendChild(measure);
   function fmtLen(L){ const m = page().mpu; return m ? (L*m).toFixed(2)+" m" : ""; }
@@ -4548,7 +4627,7 @@ function fpStartEditor(){
     if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==="y"){ e.preventDefault(); bRedo.click(); }
   });
 
-  function setTool(t){ S.tool = t; hi = null; syncUi(); draw(); }
+  function setTool(t){ S.tool = t; hi = null; S.sel = null; eraserAt = null; syncUi(); showOptBar(); draw(); }
   function syncUi(){
     Object.entries(toolBtns).forEach(([id,b])=> b.classList.toggle("active", id===S.tool));
     sw.querySelectorAll(".fp-sw").forEach(b=> b.classList.toggle("active", b.dataset.c===S.color));
@@ -4602,6 +4681,7 @@ function fpStartEditor(){
       S.cur = S.pages.findIndex(p=> p.bg && p.bg.src===imgs[0].src);
       await Promise.all(imgs.map(im=> fpImageReady(im.src)));
       drawTabs(); fit(); save(); syncUi();
+      S.snap = true; syncUi();          // snapping onto the plan's lines makes measuring easier
       askScale(imgs.map(im=> im.page));
     }catch(err){
       console.warn(err);
