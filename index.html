@@ -9,7 +9,7 @@
 
 <!-- Build stamp. INCREMENT THIS ON EVERY DEPLOYMENT (YYYY-MM-DD-NN).
      The freshness check below reads it, so it lives in exactly one place. -->
-<meta name="build-version" content="2026-10-16-03">
+<meta name="build-version" content="2026-10-16-04">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -540,7 +540,7 @@ select.tbx-in{font-size:15px;}
 
 /* ---------- Floor plan sketcher (own tab) ---------- */
 body.fp-open{overflow:hidden;padding:0 !important;background:#E2E8F0;}
-.fp{position:fixed;inset:0;display:grid;grid-template-rows:auto 1fr auto;background:#F1F5F9;font-family:inherit;color:var(--text-color);z-index:900;}
+.fp{position:fixed;inset:0;z-index:950;display:grid;grid-template-rows:auto 1fr auto;background:#F1F5F9;font-family:inherit;color:var(--text-color);z-index:900;}
 .fp-bar{display:flex;align-items:center;gap:12px;background:var(--primary-color);color:#fff;padding:10px 14px;padding-top:max(10px, env(safe-area-inset-top));}
 .fp-title{font-size:17px;font-weight:700;white-space:nowrap;}
 .fp-tabs{flex:1;display:flex;gap:6px;overflow-x:auto;min-width:0;scrollbar-width:none;}
@@ -3315,10 +3315,17 @@ function tbKey(e){ if(!TB_TAB && e.key==="Escape" && tbRoot && !document.querySe
    data through localStorage: the toolbox saves the calculators used, the site note saves
    the site details for the PDF header. */
 const TB_TAB = /[?&]toolbox\b/.test(location.search);
+/* iPad/iPhone Safari and home-screen apps don't let one tab bring another forward, and private or
+   home-screen windows don't share saved data between tabs. There, the Toolbox and Floor plan open
+   full-screen inside the site note instead of in new tabs, so nothing can get lost. */
+const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1);
+const IS_STANDALONE = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone===true;
+const USE_TABS = !IS_IOS && !IS_STANDALONE;
 const TB_KEY_USED = "ndea-tb-used", TB_KEY_META = "ndea-tb-meta", TB_KEY_RESET = "ndea-tb-reset";
 function tbLaunch(){
   tbSaveMeta();
   if(typeof draftSave==="function") draftSave();
+  if(!USE_TABS){ openToolbox(); return; }          // iPad: full screen in this page
   goToTab("ndea-toolbox", location.pathname + "?toolbox");
 }
 function tbGoToSiteNote(){ goToTab("ndea-sitenote", location.pathname); }
@@ -3340,7 +3347,7 @@ function tbSaveUsed(){
 }
 /* calculators used, as saved by the toolbox tab */
 function tbStoredUsed(){
-  if(TB_TAB && tbRoot) return tbCollectUsed();
+  if(tbRoot) return tbCollectUsed();
   try{ const o = JSON.parse(localStorage.getItem(TB_KEY_USED)||"null"); return (o && Array.isArray(o.used)) ? o.used : []; }catch(e){ return []; }
 }
 async function tbDownloadPdf(){
@@ -4051,14 +4058,34 @@ async function fpExportAll(){
 }
 function fpLaunch(){
   if(typeof draftSave==="function") draftSave();
+  if(!USE_TABS){ fpOpenOverlay(); return; }        // iPad: full screen in this page
   goToTab("ndea-floorplan", location.pathname + "?floorplan");
 }
+/* Floor plan as a full-screen layer over the site note (iPad). Browser Back or "Site note" closes it. */
+let FP_OVERLAY = false;
+function fpOpenOverlay(){
+  FP_OVERLAY = true;
+  if(!FP_EDITOR) fpStartEditor(true);
+  else { FP_EDITOR.root.style.display = ""; FP_EDITOR.resize(); FP_EDITOR.fit(); }
+  document.body.classList.add("fp-open");
+  window.scrollTo(0,0);
+  if(!(history.state && history.state.fp)) history.pushState({fp:1}, "");
+}
+function fpCloseOverlay(fromHistory){
+  if(!FP_EDITOR) return;
+  FP_EDITOR.root.style.display = "none";
+  document.body.classList.remove("fp-open");
+  if(!fromHistory && history.state && history.state.fp) history.back();
+}
+window.addEventListener("popstate", e=>{ if(FP_OVERLAY && FP_EDITOR && FP_EDITOR.root.style.display!=="none" && !(e.state && e.state.fp)) fpCloseOverlay(true); });
 
 /* ---------- the editor ---------- */
-function fpStartEditor(){
-  try{ window.name = "ndea-floorplan"; }catch(e){}
-  document.title = "Floor plan – NDEA Site Note | CSR Sustain";
-  document.querySelectorAll(".shell, .actionbar").forEach(x=> x.style.display = "none");
+function fpStartEditor(overlay){
+  if(!overlay){
+    try{ window.name = "ndea-floorplan"; }catch(e){}
+    document.title = "Floor plan – NDEA Site Note | CSR Sustain";
+    document.querySelectorAll(".shell, .actionbar").forEach(x=> x.style.display = "none");
+  }
   document.body.classList.add("fp-open");
 
   const S = {pages:[], cur:0, tool:"pen", color:"#1E293B", width:3, textSize:30, eraser:16, sel:null, grid:true, snap:true, undo:[], redo:[], view:{s:1,tx:0,ty:0}, penSeen:false, labelCat:"Activity"};
@@ -4072,7 +4099,7 @@ function fpStartEditor(){
   const addPg = el("button",{type:"button", class:"fp-tab add", title:"Add a page (e.g. another floor)"},"+ Page");
   const importBtn = el("button",{type:"button", class:"fp-barbtn"},"📄 Import PDF / photo");
   const pdfBtn = el("button",{type:"button", class:"fp-barbtn amber"},"⬇ Download PDF");
-  const noteBtn = el("button",{type:"button", class:"fp-barbtn ghost"},"Site note ↗");
+  const noteBtn = el("button",{type:"button", class:"fp-barbtn ghost"}, overlay ? "Back to site note ✕" : "Site note ↗");
   const fileIn = el("input",{type:"file", accept:"application/pdf,image/*", style:"display:none;"});
   bar.appendChild(el("div",{class:"fp-title"},"📐 Floor plan"));
   bar.appendChild(tabs); bar.appendChild(el("div",{class:"fp-barright"}, importBtn, pdfBtn, noteBtn)); bar.appendChild(fileIn);
@@ -4711,9 +4738,9 @@ function fpStartEditor(){
       downloadBlob(doc.output("blob"), `Floor_Plan_${addr}_${new Date().toISOString().slice(0,10)}.pdf`);
     }catch(e){ alert("The PDF couldn't be created – it needs a connection to load the PDF library the first time."); }
   });
-  noteBtn.addEventListener("click", ()=> goToTab("ndea-sitenote", location.pathname));
+  noteBtn.addEventListener("click", ()=>{ if(overlay) fpCloseOverlay(); else goToTab("ndea-sitenote", location.pathname); });
 
-  window.addEventListener("resize", ()=>{ resize(); });
+  window.addEventListener("resize", ()=>{ if(root.style.display!=="none") resize(); });
   window.addEventListener("storage", e=>{ if(e.key===FP_KEY_RESET) location.reload(); });
 
   /* load saved plans */
@@ -4725,7 +4752,7 @@ function fpStartEditor(){
   });
   loadJsPdf().catch(()=>{});
   fpLoadPdfJs().catch(()=>{});
-  FP_EDITOR = {state:S, draw, fit, setTool, canvas, toWorld};
+  FP_EDITOR = {state:S, draw, fit, setTool, canvas, toWorld, resize, root};
 }
 let FP_EDITOR = null;
 let pdfjsPromise = null;
@@ -6874,6 +6901,8 @@ document.getElementById("btn-clear").addEventListener("click", ()=>{
   if(!confirm("Clear all entered data on this form? This cannot be undone.")) return;
   try{ localStorage.removeItem(TB_KEY_USED); localStorage.setItem(TB_KEY_RESET, String(Date.now())); }catch(e){}
   idbDel(FP_KEY).catch(()=>{}).then(()=>{ try{ localStorage.setItem(FP_KEY_RESET, String(Date.now())); }catch(e){} });
+  if(!TB_TAB && tbRoot) tbResetAll();
+  if(!FP_TAB && FP_EDITOR){ FP_EDITOR.root.remove(); FP_EDITOR = null; document.body.classList.remove("fp-open"); }
   idbDel(MU_KEY).catch(()=>{}).then(()=>{ muRenderAttachment(); muSync(); syncMapLink(); });
   document.querySelectorAll("input[type=text], input[type=date], input[type=number], textarea").forEach(i=> i.value="");
   document.querySelectorAll("select").forEach(s=> s.value="");
