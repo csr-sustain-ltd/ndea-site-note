@@ -9,7 +9,7 @@
 
 <!-- Build stamp. INCREMENT THIS ON EVERY DEPLOYMENT (YYYY-MM-DD-NN).
      The freshness check below reads it, so it lives in exactly one place. -->
-<meta name="build-version" content="2026-10-16-04">
+<meta name="build-version" content="2026-10-26-01">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -621,6 +621,22 @@ body.fp-open{overflow:hidden;padding:0 !important;background:#E2E8F0;}
   .fp-tool .nm{font-size:10.5px;}
   .fp-bb{padding:8px 10px;}
 }
+
+/* ---------- Section photos ---------- */
+.ph-btn{font:inherit;font-size:12px;font-weight:600;color:#0E7490;background:#fff;border:1px solid #A5F3FC;border-radius:999px;padding:4px 11px;cursor:pointer;}
+.ph-btn:hover{background:#0E7490;color:#fff;border-color:#0E7490;}
+.ph-btn.has{background:#ECFEFF;border-color:#0E7490;}
+.ph-panel{margin-top:16px;border-top:1px dashed var(--border-color);padding-top:14px;}
+.ph-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;}
+.ph-take,.ph-pick{font:inherit;font-size:14px;font-weight:700;border-radius:10px;padding:10px 16px;cursor:pointer;border:none;}
+.ph-take{background:#0E7490;color:#fff;}
+.ph-pick{background:#ECFEFF;color:#0E7490;border:1px solid #A5F3FC;}
+.ph-status{font-size:13px;color:var(--muted);}
+.ph-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;}
+.ph-item{position:relative;display:flex;flex-direction:column;gap:4px;}
+.ph-thumb img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;border:1px solid var(--border-color);background:#F1F5F9;}
+.ph-del{position:absolute;top:6px;right:6px;width:28px;height:28px;border-radius:50%;border:none;background:rgba(15,23,42,.65);color:#fff;font-size:13px;cursor:pointer;}
+.ph-cap{font:inherit;font-size:12.5px;padding:6px 8px;border:1px solid var(--border-color);border-radius:6px;}
 
 /* ---------- Mark Up / job details ---------- */
 .mu-top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px;}
@@ -1411,6 +1427,7 @@ function section(title, conv, bodyEl){
   const body = el("div",{class:"section-body"});
   body.appendChild(bodyEl);
   sec.appendChild(body);
+  if(typeof phAttach==="function") phAttach(sec, title, titleWrap);
   return sec;
 }
 
@@ -4974,7 +4991,17 @@ function buildMarkupSection(){
   body.appendChild(g);
   body.appendChild(el("div",{id:"mu_areacheck", class:"mu-areacheck", style:"display:none;"}));
   setTimeout(()=>{ muRenderAttachment(); muSync(); }, 0);
-  return section("Job Details (Mark Up)", "", body);
+  // optional: hidden until switched on
+  const outer = el("div");
+  const tog = el("input",{type:"checkbox", id:"mu_enabled", class:"opt-switch-input"});
+  outer.appendChild(el("label",{class:"opt-switch", for:"mu_enabled"},
+    tog, el("span",{class:"opt-switch-track","aria-hidden":"true"}),
+    el("span",{class:"opt-switch-text"}, el("strong",{},"Use a Mark Up for this job"),
+      el("span",{}, "Optional. Import the office's Mark Up (PDF, scan or photo) to fill in the job details and attach it to the site note."))));
+  body.id = "mu_body"; body.style.display = "none"; body.style.marginTop = "18px";
+  outer.appendChild(body);
+  tog.addEventListener("change", ()=>{ body.style.display = tog.checked ? "" : "none"; muSync(); });
+  return section("Job Details (Mark Up) – optional", "", outer);
 }
 /* Google Maps directions to site (opens the Maps app on a phone or iPad) */
 function siteMapsUrl(){
@@ -4992,13 +5019,16 @@ document.addEventListener("input", e=>{ if(e.target && /^(p_address|p_postcode)$
 setTimeout(syncMapLink, 0);
 
 /* arrival / contact reminder banner, and the floor-area check */
+function muEnabled(){ return checked("mu_enabled"); }
 function muSync(){
   const b = document.getElementById("mu_banner");
   if(b){
     const parts = [];
-    if(val("p_jobref")) parts.push(["Job", val("p_jobref")]);
-    if(val("p_arrival")) parts.push(["Arrive", val("p_arrival")]);
-    if(val("p_onsite")) parts.push(["", val("p_onsite")]);
+    if(muEnabled()){
+      if(val("p_jobref")) parts.push(["Job", val("p_jobref")]);
+      if(val("p_arrival")) parts.push(["Arrive", val("p_arrival")]);
+      if(val("p_onsite")) parts.push(["", val("p_onsite")]);
+    }
     b.innerHTML = "";
     const url = siteMapsUrl();
     if(parts.length || url){
@@ -5109,9 +5139,117 @@ function muReview(f, pages, name, method){
       try{ await idbSet(MU_KEY, {name, t:Date.now(), pages:pages.map(p=>({src:p.src, w:p.w, h:p.h}))}); }catch(e){}
     }
     scrim.remove();
+    const mt = document.getElementById("mu_enabled"); if(mt && !mt.checked){ mt.checked = true; mt.dispatchEvent(new Event("change",{bubbles:true})); }
     muRenderAttachment(); muSync();
     const s = document.getElementById("status-text"); if(s) s.textContent = "Job details filled in from the Mark Up – please check them";
   });
+}
+
+/* ==========================================================================
+   SECTION PHOTOS
+   Every section of the site note has a "📷 Photos" button. "Take photo" opens
+   the iPad / phone camera directly; "Choose photos" picks from the library.
+   Photos are reduced to a sensible size, kept in the browser (IndexedDB) until
+   Clear Form, and printed in the Word site note under "Site Photographs".
+   ========================================================================== */
+const PH_KEY = "photos";
+const PH_MAX = 1600;                 // longest side in pixels
+let phCache = null;                  // {sections:{title:[photo]}}
+async function phLoad(){
+  if(phCache) return phCache;
+  try{ phCache = (await idbGet(PH_KEY)) || {sections:{}}; }catch(e){ phCache = {sections:{}}; }
+  if(!phCache.sections) phCache.sections = {};
+  return phCache;
+}
+let phSaveT = null;
+function phSave(){ clearTimeout(phSaveT); phSaveT = setTimeout(()=>{ idbSet(PH_KEY, phCache).catch(()=>{}); }, 300); }
+function phCount(title){ return phCache && phCache.sections[title] ? phCache.sections[title].length : 0; }
+
+/* shrink a camera photo to a JPEG the Word file can carry */
+function phProcess(file){
+  return new Promise((res, rej)=>{
+    const url = URL.createObjectURL(file);
+    const im = new Image();
+    im.onload = ()=>{
+      const k = Math.min(1, PH_MAX/Math.max(im.naturalWidth, im.naturalHeight));
+      const c = document.createElement("canvas");
+      c.width = Math.round(im.naturalWidth*k); c.height = Math.round(im.naturalHeight*k);
+      c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      res({id:"ph"+Date.now()+Math.random().toString(36).slice(2,6), src:c.toDataURL("image/jpeg", 0.8), w:c.width, h:c.height, caption:"", t:Date.now()});
+    };
+    im.onerror = ()=>{ URL.revokeObjectURL(url); rej(new Error("That photo couldn't be opened.")); };
+    im.src = url;
+  });
+}
+
+/* the photo strip inside a section */
+function phAttach(sec, title, headWrap){
+  const btn = el("button",{type:"button", class:"ph-btn", title:"Add photos to this section"}, "📷 Photos");
+  headWrap.appendChild(btn);
+  const panel = el("div",{class:"ph-panel", style:"display:none;"});
+  const camIn = el("input",{type:"file", accept:"image/*", capture:"environment", style:"display:none;"});
+  const libIn = el("input",{type:"file", accept:"image/*", multiple:"", style:"display:none;"});
+  const take = el("button",{type:"button", class:"ph-take"}, "📸 Take photo");
+  const pick = el("button",{type:"button", class:"ph-pick"}, "🖼️ Choose photos");
+  const status = el("span",{class:"ph-status"});
+  const grid = el("div",{class:"ph-grid"});
+  panel.appendChild(el("div",{class:"ph-actions"}, take, pick, status, camIn, libIn));
+  panel.appendChild(grid);
+  sec.querySelector(".section-body").appendChild(panel);
+
+  function label(){ const n = phCount(title); btn.textContent = n ? "📷 Photos ("+n+")" : "📷 Photos"; btn.classList.toggle("has", n>0); }
+  function render(){
+    grid.innerHTML = "";
+    const list = (phCache && phCache.sections[title]) || [];
+    list.forEach((p,i)=>{
+      const cap = el("input",{type:"text", class:"ph-cap", placeholder:"Caption (optional)", value:p.caption||""});
+      cap.addEventListener("input", ()=>{ p.caption = cap.value; phSave(); });
+      const del = el("button",{type:"button", class:"ph-del", title:"Remove photo"},"✕");
+      del.addEventListener("click", ()=>{ if(!confirm("Remove this photo?")) return; list.splice(i,1); if(!list.length) delete phCache.sections[title]; phSave(); render(); label(); });
+      grid.appendChild(el("div",{class:"ph-item"},
+        el("a",{href:p.src, target:"_blank", rel:"noopener", class:"ph-thumb"}, el("img",{src:p.src, alt:p.caption || ("Photo "+(i+1)+" – "+title)})), del, cap));
+    });
+  }
+  async function add(files){
+    if(!files || !files.length) return;
+    await phLoad();
+    status.textContent = "Adding "+files.length+" photo"+(files.length>1?"s":"")+"…";
+    const list = phCache.sections[title] = phCache.sections[title] || [];
+    for(const f of Array.from(files)){
+      try{ list.push(await phProcess(f)); }catch(e){ alert(e.message); }
+    }
+    phSave(); render(); label();
+    status.textContent = "";
+    panel.style.display = "";
+  }
+  btn.addEventListener("click", async ()=>{
+    await phLoad();
+    const show = panel.style.display==="none";
+    panel.style.display = show ? "" : "none";
+    if(show){ render(); sec.scrollIntoView && sec.scrollIntoView({block:"nearest"}); }
+  });
+  take.addEventListener("click", ()=> camIn.click());          // capture="environment" opens the rear camera
+  pick.addEventListener("click", ()=> libIn.click());
+  camIn.addEventListener("change", ()=>{ const f = camIn.files; add(f).then(()=>{ camIn.value = ""; }); });
+  libIn.addEventListener("change", ()=>{ const f = libIn.files; add(f).then(()=>{ libIn.value = ""; }); });
+  // show sections that already have photos
+  phLoad().then(()=>{ label(); if(phCount(title)){ render(); panel.style.display = ""; } });
+  sec._phRefresh = ()=>{ label(); render(); if(!phCount(title)) panel.style.display = "none"; };
+}
+
+/* photos for the Word file, in the order the sections appear in the form */
+async function phForReport(){
+  const d = await phLoad();
+  const order = Array.from(document.querySelectorAll(".shell .section-title > span:first-child")).map(s=> s.textContent);
+  return Object.keys(d.sections).filter(k=> d.sections[k].length)
+    .sort((a,b)=> ((order.indexOf(a)+1)||999) - ((order.indexOf(b)+1)||999))
+    .map(k=> ({title:k, photos:d.sections[k]}));
+}
+async function phClearAll(){
+  phCache = {sections:{}};
+  try{ await idbDel(PH_KEY); }catch(e){}
+  document.querySelectorAll(".shell .section").forEach(s=>{ if(s._phRefresh) s._phRefresh(); });
 }
 
 const LIGHT_CONTROLS = ["Manual switching only","Occupancy sensors","Dimming","Manual on, auto off","Time control to display lighting","Other"];
@@ -6045,8 +6183,8 @@ function collectReport(){
       address: dash(val("p_address")), postcode: dash(val("p_postcode")),
       assessor: dash(val("p_assessor")), membership: dash(val("p_membership")),
       assessorEmail: dash(val("p_assessor_email")), date: dash(val("p_date")),
-      level: dash(val("p_level")), use: dash(val("p_use")), customer: [dash(val("p_customer")), dash(val("p_company"))].filter(Boolean).join(" – "),
-      riskDone: checked("p_risk_done"), generated: new Date().toLocaleDateString("en-GB"), jobref: dash(val("p_jobref")),
+      level: dash(val("p_level")), use: dash(val("p_use")), customer: [dash(val("p_customer")), checked("mu_enabled") ? dash(val("p_company")) : ""].filter(Boolean).join(" – "),
+      riskDone: checked("p_risk_done"), generated: new Date().toLocaleDateString("en-GB"), jobref: checked("mu_enabled") ? dash(val("p_jobref")) : "",
       signature: (currentAssessor()||{}).sig || ""
     },
     sections: []
@@ -6066,14 +6204,14 @@ function collectReport(){
   sub(s1,"Site & Assessor");
   kv(s1,[["Site address",R.meta.address],["Postcode",R.meta.postcode],["Date of inspection",R.meta.dateFmt],["Assessment level",R.meta.level],
          ["Assessor",R.meta.assessor],["Membership no.",R.meta.membership],["Assessor email",R.meta.assessorEmail],["Weather location",val("p_weather")]]);
-  if(["p_jobref","p_jobtype","p_arrival","p_onsite","p_markup_area"].some(id=> val(id))){
+  if(checked("mu_enabled") && ["p_jobref","p_jobtype","p_arrival","p_onsite","p_markup_area"].some(id=> val(id))){
     sub(s1,"Job Details (Mark Up)");
     const mu = parseFloat(val("p_markup_area")), mod = parseFloat(val("epc_new_area"));
     const areaTxt = val("p_markup_area") ? val("p_markup_area")+" m²"+((mu>0 && mod>0) ? "  (modelled "+mod+" m², "+((mod-mu)/mu*100>=0?"+":"")+((mod-mu)/mu*100).toFixed(1)+"%)" : "") : "";
     kv(s1,[["Job reference",val("p_jobref")],["Job type",val("p_jobtype")],["Arrival time",val("p_arrival")],["On-site notes",val("p_onsite")],["Floor area (Mark Up)",areaTxt]]);
   }
   sub(s1,"Customer");
-  kv(s1,[["Contact name",val("p_customer")],["Company",val("p_company")],["Phone",val("p_phone")],["Email",val("p_email")]]);
+  kv(s1,[["Contact name",val("p_customer")],["Company",checked("mu_enabled") ? val("p_company") : ""],["Phone",val("p_phone")],["Email",val("p_email")]]);
   sub(s1,"Building");
   const ext = val("p_has_ext");
   const bPairs = [["Building use",val("p_use")],["Building age",val("p_age")],["Number of floors",val("p_floors")],["Occupancy",radioVal("occupancy")],
@@ -6179,6 +6317,13 @@ function collectReport(){
   table(s7,[{key:"name",label:"System",w:3},{key:"spec",label:"Specification Obtained",w:2.4},{key:"notes",label:"Notes / Location",w:4.6}], ren, "No renewable systems recorded as present.");
   note(s7,"Renewables justification notes",val("ren_notes"));
 
+  /* photos added in each section */
+  const photoSets = window.__sitePhotos || [];
+  if(photoSets.length){
+    const sp = S("Site Photographs");
+    photoSets.forEach(g=> sp.blocks.push({t:"photos", title:g.title.replace(/ – optional$/,""), photos:g.photos}));
+  }
+
   /* Floor plans drawn or marked up in the Floor plan tab */
   const plans = window.__floorPlans || [];
   if(plans.length){
@@ -6233,6 +6378,7 @@ function buildPrintSheet(){
         ps.appendChild(el("div",{class:"notesblock"}, b.label? el("span",{class:"k"},b.label):null, on.length? on.join(", ") : "None ticked."));
       } else if(b.t==="para") ps.appendChild(el("div",{class:"notesblock"}, b.text));
       else if(b.t==="image") ps.appendChild(el("div",{class:"notesblock"}, el("span",{class:"k"},"Floor plan"), b.title+" (in the Word site note)"));
+      else if(b.t==="photos") ps.appendChild(el("div",{class:"notesblock"}, el("span",{class:"k"},b.title), b.photos.length+" photo(s) – in the Word site note"));
       else if(b.t==="sign"){
         const sigLabel = "Assessor Signature" + (R.meta.assessor ? " — "+R.meta.assessor : "") + (R.meta.membership ? " ("+R.meta.membership+")" : "");
         ps.appendChild(el("div",{class:"sign"},
@@ -6279,6 +6425,8 @@ function reportToEmailHtml(R){
       } else if(b.t==="checks"){
         const on = b.items.filter(x=>x.on).map(x=>x.label);
         out.push(`<div style="${F}font-size:12px;margin:0 0 8px;">${b.label?`<strong>${E(b.label)}:</strong> `:""}${on.length ? on.map(l=>"&#9745; "+E(l)).join("<br>") : '<span style="color:#64748B;font-style:italic;">None ticked.</span>'}</div>`);
+      } else if(b.t==="photos"){
+        out.push(`<div style="${F}font-size:12px;margin:0 0 6px;">📷 <strong>${E(b.title)}</strong> – ${b.photos.length} photo${b.photos.length>1?"s":""} in the Word site note.</div>`);
       } else if(b.t==="image"){
         out.push(`<div style="${F}font-size:12px;margin:0 0 6px;">📐 <strong>${E(b.title)}</strong> – included in the Word site note.</div>`);
       } else if(b.t==="para"){
@@ -6424,6 +6572,25 @@ async function reportToDocxBlob(R){
       ...(b.conv ? [run("     Conventions "+b.conv,{size:15,color:LIGHT})] : [])
     ],{before:120, after:90, keepNext:true, border:{bottom:{style:BorderStyle.SINGLE,size:4,color:MINT_LINE,space:3}}})];
   const renderPara = b => [P(run(b.text,{size:18, italics:b.tone==="muted", color:b.tone==="muted"?GREY:TXT}),{after:140})];
+  // two photos per row, each with its caption
+  const renderPhotos = b => {
+    const out = renderSub({text:b.title});
+    const cw = [W/2, W/2], rows = [];
+    for(let i=0;i<b.photos.length;i+=2){
+      rows.push(new TableRow({cantSplit:true, children:[0,1].map(k=>{
+        const p = b.photos[i+k];
+        if(!p) return cell([P(run(" "),{after:0})], cw[k], {borders:NOB});
+        const maxW = 300, maxH = 240, sc = Math.min(maxW/p.w, maxH/p.h);
+        return cell([
+          new Paragraph({alignment:AlignmentType.CENTER, spacing:{after:40}, children:[new ImageRun({data:dataUriBytes(p.src), type:"jpg", transformation:{width:Math.round(p.w*sc), height:Math.round(p.h*sc)}})]}),
+          P(run(p.caption || ("Photo "+(i+k+1)), {size:16, color: p.caption ? TXT : GREY, italics:!p.caption}), {after:60, align:AlignmentType.CENTER})
+        ], cw[k], {borders:NOB, pad:60});
+      })}));
+    }
+    out.push(tbl(rows, cw, {borders:NOB}));
+    out.push(gap(160));
+    return out;
+  };
 
   const renderSign = async () => {
     const out = [P(run("Assessor Sign-off",{bold:true,size:22,color:TEAL_DK}),{before:240,after:120,keepNext:true,border:{bottom:{style:BorderStyle.SINGLE,size:4,color:MINT_LINE,space:3}}})];
@@ -6492,6 +6659,7 @@ async function reportToDocxBlob(R){
       else if(b.t==="checks") body.push(...renderChecks(b));
       else if(b.t==="para") body.push(...renderPara(b));
       else if(b.t==="sign") body.push(...(await renderSign()));
+      else if(b.t==="photos") body.push(...renderPhotos(b));
       else if(b.t==="image"){
         // one floor plan per page, scaled to fit the page
         const maxW = 640, maxH = 820;
@@ -6550,7 +6718,7 @@ async function reportToDocxBlob(R){
 }
 
 /* ---------- "Email me a copy?" prompt ---------- */
-function askEmailPreference(planCount, markupCount){
+function askEmailPreference(planCount, markupCount, photoCount){
   return new Promise(resolve=>{
     const email = (val("p_assessor_email")||"").trim();
     const ok = EMAIL_CONFIG.EMAIL_ENABLED && isValidEmail(email);
@@ -6581,8 +6749,14 @@ function askEmailPreference(planCount, markupCount){
       card.appendChild(el("label",{class:"em-calcs em-plans", for:"em-markup"}, muCb,
         el("span",{}, "Attach the Mark Up to the end of the Word site note")));
     }
+    let phCb = null;
+    if(photoCount){
+      phCb = el("input",{type:"checkbox", id:"em-photos"}); phCb.checked = true;
+      card.appendChild(el("label",{class:"em-calcs em-plans", for:"em-photos"}, phCb,
+        el("span",{}, "Add the site photos to the Word site note (", el("strong",{}, photoCount+" photo"+(photoCount>1?"s":"")), ")")));
+    }
     const btns = el("div",{class:"modal-btns"});
-    const close = v => { document.removeEventListener("keydown", onKey); scrim.remove(); resolve(v===null ? null : {email:v, calcs: calcCb ? calcCb.checked : false, plans: planCb ? planCb.checked : false, markup: muCb ? muCb.checked : false}); };
+    const close = v => { document.removeEventListener("keydown", onKey); scrim.remove(); resolve(v===null ? null : {email:v, calcs: calcCb ? calcCb.checked : false, plans: planCb ? planCb.checked : false, markup: muCb ? muCb.checked : false, photos: phCb ? phCb.checked : false}); };
     const onKey = e => { if(e.key==="Escape") close(null); };
     const cancel = el("button",{class:"btn btn-secondary", type:"button"}, "Cancel");
     cancel.addEventListener("click", ()=> close(null));
@@ -6842,13 +7016,16 @@ async function sendSiteNoteEmail(){
 document.getElementById("btn-generate").addEventListener("click", async ()=>{
   const statusEl = document.getElementById("status-text");
   const fpPages = await fpLoadPlans();
-  const muAtt = await muLoadAttachment();
-  const choice = await askEmailPreference(fpPages.length, muAtt.length);
+  const muAtt = muEnabled() ? await muLoadAttachment() : [];
+  const photoSets = await phForReport();
+  const photoCount = photoSets.reduce((n,g)=> n+g.photos.length, 0);
+  const choice = await askEmailPreference(fpPages.length, muAtt.length, photoCount);
   if(choice===null) return;                          // cancelled
   const wantEmail = choice.email;
   window.__includeCalcs = choice.calcs;
   window.__floorPlans = [];
   window.__markupPages = choice.markup ? muAtt : [];
+  window.__sitePhotos = choice.photos ? photoSets : [];
   if(choice.plans){ statusEl.innerHTML = "Adding floor plans…"; try{ window.__floorPlans = await fpExportAll(); }catch(e){ console.warn("floor plans", e); } }
 
   statusEl.innerHTML = "Building Word document…";
@@ -6904,6 +7081,8 @@ document.getElementById("btn-clear").addEventListener("click", ()=>{
   if(!TB_TAB && tbRoot) tbResetAll();
   if(!FP_TAB && FP_EDITOR){ FP_EDITOR.root.remove(); FP_EDITOR = null; document.body.classList.remove("fp-open"); }
   idbDel(MU_KEY).catch(()=>{}).then(()=>{ muRenderAttachment(); muSync(); syncMapLink(); });
+  phClearAll();
+  const mub = document.getElementById("mu_body"); if(mub) mub.style.display = "none";
   document.querySelectorAll("input[type=text], input[type=date], input[type=number], textarea").forEach(i=> i.value="");
   document.querySelectorAll("select").forEach(s=> s.value="");
   document.querySelectorAll("input[type=checkbox]").forEach(c=> c.checked=false);
