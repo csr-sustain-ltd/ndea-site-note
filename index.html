@@ -9,7 +9,7 @@
 
 <!-- Build stamp. INCREMENT THIS ON EVERY DEPLOYMENT (YYYY-MM-DD-NN).
      The freshness check below reads it, so it lives in exactly one place. -->
-<meta name="build-version" content="2026-10-26-01">
+<meta name="build-version" content="2026-11-02-01">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -623,6 +623,8 @@ body.fp-open{overflow:hidden;padding:0 !important;background:#E2E8F0;}
 }
 
 /* ---------- Section photos ---------- */
+.restore-last{font:inherit;font-size:12.5px;font-weight:700;color:var(--primary-color);background:#fff;border:1px solid #BFDAD4;border-radius:999px;padding:4px 12px;cursor:pointer;margin-left:6px;}
+.restore-last:hover{background:var(--primary-color);color:#fff;}
 .ph-btn{font:inherit;font-size:12px;font-weight:600;color:#0E7490;background:#fff;border:1px solid #A5F3FC;border-radius:999px;padding:4px 11px;cursor:pointer;}
 .ph-btn:hover{background:#0E7490;color:#fff;border-color:#0E7490;}
 .ph-btn.has{background:#ECFEFF;border-color:#0E7490;}
@@ -7072,10 +7074,55 @@ document.getElementById("btn-generate").addEventListener("click", async ()=>{
   }
 
   if(wantEmail) await sendSiteNoteEmail();
+
+  // Site note is out: clear the form for the next job (a copy is kept so it can be restored once)
+  if(done){
+    const msg = statusEl.innerHTML;
+    await new Promise(r=> setTimeout(r, used.length ? 1500 : 800));    // let the downloads start first
+    await backupLastSiteNote();
+    clearSiteNote();
+    if(typeof switchTab==="function") switchTab(TABS[0].id);
+    window.scrollTo({top:0, behavior:"smooth"});
+    statusEl.innerHTML = msg + ' — form cleared for the next job. ';
+    const undo = el("button",{type:"button", class:"restore-last"},"↶ Restore last site note");
+    undo.addEventListener("click", restoreLastSiteNote);
+    statusEl.appendChild(undo);
+  }
 });
+
+/* ---------- one-step undo for the automatic clear after downloading ---------- */
+const LAST_KEY = "ndea-last-sitenote", LAST_IDB = [FP_KEY, MU_KEY, PH_KEY];
+async function backupLastSiteNote(){
+  try{
+    const d = draftCollect();
+    localStorage.setItem(LAST_KEY, JSON.stringify({t:Date.now(), draft:d, tbUsed:localStorage.getItem(TB_KEY_USED)}));
+  }catch(e){ console.warn("backup", e); }
+  for(const k of LAST_IDB){
+    try{ const v = await idbGet(k); if(v) await idbSet("last:"+k, v); else await idbDel("last:"+k); }catch(e){}
+  }
+}
+async function restoreLastSiteNote(){
+  let b = null; try{ b = JSON.parse(localStorage.getItem(LAST_KEY)||"null"); }catch(e){}
+  if(!b || !b.draft){ alert("There's no previous site note to restore."); return; }
+  const cur = draftCollect();
+  if(!draftIsEmpty(cur) && !confirm("You've started a new site note. Restoring the last one will replace what you've entered. Continue?")) return;
+  try{
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(b.draft));
+    if(b.tbUsed) localStorage.setItem(TB_KEY_USED, b.tbUsed);
+  }catch(e){}
+  for(const k of LAST_IDB){
+    try{ const v = await idbGet("last:"+k); if(v) await idbSet(k, v); else await idbDel(k); }catch(e){}
+  }
+  draftRestoring = true;                 // don't let the page save the empty form over it while reloading
+  location.reload();
+}
 
 document.getElementById("btn-clear").addEventListener("click", ()=>{
   if(!confirm("Clear all entered data on this form? This cannot be undone.")) return;
+  clearSiteNote();
+});
+/* empties the whole site note (form, Toolbox, floor plan, Mark Up, photos) ready for the next job */
+function clearSiteNote(){
   try{ localStorage.removeItem(TB_KEY_USED); localStorage.setItem(TB_KEY_RESET, String(Date.now())); }catch(e){}
   idbDel(FP_KEY).catch(()=>{}).then(()=>{ try{ localStorage.setItem(FP_KEY_RESET, String(Date.now())); }catch(e){} });
   if(!TB_TAB && tbRoot) tbResetAll();
@@ -7100,8 +7147,9 @@ document.getElementById("btn-clear").addEventListener("click", ()=>{
   const lgOther = document.getElementById("lightgen_other_wrap"); if(lgOther) lgOther.style.display = "none";
   document.querySelectorAll(".other-in").forEach(i=>{ i.style.display = "none"; });
   epcRefresh();
+  try{ localStorage.removeItem(DRAFT_KEY); }catch(e){}
   document.getElementById("status-text").textContent = "Draft — not yet generated";
-});
+}
 
 /* ==========================================================================
    AUTOSAVE (draft site note)
@@ -7192,7 +7240,7 @@ if(IN_SITENOTE){
   window.addEventListener("pagehide", draftSave);
   document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="hidden") draftSave(); });
   setTimeout(draftRestore, 0);
-  document.getElementById("btn-clear").addEventListener("click", ()=>{ setTimeout(()=>{ try{ localStorage.removeItem(DRAFT_KEY); }catch(e){} }, 0); });
+
 }
 
 /* ---------- switching between the site note, Toolbox and Floor plan tabs ----------
